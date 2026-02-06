@@ -1,0 +1,123 @@
+.audio-visualizer {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 400px;
+  background: radial-gradient(circle at center, var(--color-bg-overlay) 0%, var(--color-bg-base) 100%);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  flex: 1;
+}
+
+.fullscreen .audio-visualizer {
+  min-height: 100vh;
+  border-radius: 0;
+}
+
+.visualizer-canvas {
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+.visualizer-canvas canvas {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.visualizer-controls {
+  position: absolute;
+  bottom: var(--space-4);
+  right: var(--space-4);
+  display: flex;
+  gap: var(--space-2);
+  background: rgba(0, 0, 0, 0.8);
+  padding: var(--space-2);
+  border-radius: var(--radius-lg);
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--color-border-default);
+  box-shadow: var(--shadow-lg);
+  z-index: var(--z-raised);
+}
+
+.visualizer-controls button {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--color-border-emphasis);
+  color: var(--color-text-primary);
+  font-size: 20px;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.visualizer-controls button:hover {
+  background: var(--color-primary-muted);
+  border-color: var(--color-primary-border);
+  transform: translateY(-1px);
+}
+
+.visualizer-controls button.active {
+  background: var(--color-primary-muted);
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  box-shadow: var(--shadow-glow);
+}
+
+.visualizer-controls button:active {
+  transform: translateY(0);
+}
+
+/* Fallback message when WebGL not supported */
+.visualizer-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--color-text-tertiary);
+  font-size: var(--text-base);
+  font-weight: var(--weight-medium);
+}
+
+/* Playlist scrollbar */
+.playlist::-webkit-scrollbar {
+  width: 6px;
+}
+
+.playlist::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.playlist::-webkit-scrollbar-thumb {
+  background: var(--color-bg-active);
+  border-radius: var(--radius-full);
+}
+
+.playlist::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-tertiary);
+}
+
+/* Search results scrollbar */
+.search-results::-webkit-scrollbar {
+  width: 6px;
+}
+
+.search-results::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.search-results::-webkit-scrollbar-thumb {
+  background: var(--color-bg-active);
+  border-radius: var(--radius-full);
+}
+
+.search-results::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-tertiary);
+}

@@ -1,0 +1,205 @@
+/* AISetupStep.css */
+
+.ai-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  gap: var(--space-4); /* 14px -> 16px */
+  padding: var(--space-2) 0;
+}
+
+.ai-title {
+  font-size: var(--text-xl); /* 24px */
+  font-weight: var(--weight-bold);
+  margin: 0;
+}
+
+.ai-subtitle {
+  font-size: var(--text-sm); /* 14px */
+  color: var(--color-text-secondary);
+  margin: 0;
+  text-align: center;
+  max-width: 440px;
+  line-height: var(--leading-normal);
+}
+
+/* ─── Cards ─── */
+.ai-cards {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4); /* 14px */
+  width: 100%;
+  margin-top: var(--space-1);
+}
+
+.ai-card {
+  padding: 18px;
+  border-radius: var(--radius-lg); /* 12px */
+  background: linear-gradient(135deg, var(--color-bg-card) 0%, var(--color-bg-input) 100%);
+  border: 1px solid var(--color-border-subtle);
+  transition: all var(--transition-fast);
+}
+
+.ai-card:hover {
+  border-color: var(--color-border-default);
+}
+
+.ai-card.saved {
+  border: 1px solid var(--color-primary-border);
+  background: linear-gradient(135deg, rgba(26, 26, 16, 1) 0%, rgba(37, 37, 24, 1) 100%);
+}
+
+.ai-card-top {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4); /* 14px */
+}
+
+.ai-emoji {
+  font-size: 28px;
+  flex-shrink: 0;
+}
+
+.ai-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.ai-name {
+  font-size: var(--text-base); /* 15px */
+  font-weight: var(--weight-semibold);
+  color: var(--color-text-primary);
+}
+
+.ai-desc {
+  font-size: var(--text-xs); /* 12px */
+  color: var(--color-text-tertiary);
+  line-height: 1.3;
+  margin-top: 2px;
+}
+
+.ai-saved-badge {
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+/* ─── Card Body ─── */
+.ai-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2); /* 10px */
+  margin-top: var(--space-4); /* 14px */
+  padding-top: var(--space-4); /* 14px */
+  border-top: 1px solid var(--color-border-subtle);
+}
+
+.ai-dashboard-btn {
+  align-self: flex-start;
+  padding: 6px 14px;
+  border-radius: var(--radius-sm); /* 6px */
+  border: 1px solid var(--color-primary-border);
+  background-color: var(--color-primary-muted);
+  color: var(--color-primary);
+  font-size: var(--text-xs); /* 12px */
+  font-weight: var(--weight-medium);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.ai-dashboard-btn:hover {
+  background-color: var(--color-primary-border);
+  transform: translateY(-1px);
+}
+
+/* ─── Input Row ─── */
+.ai-input-row {
+  display: flex;
+  gap: var(--space-2);
+  align-items: stretch;
+}
+
+.ai-input-wrapper {
+  flex: 1;
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.ai-input {
+  width: 100%;
+  padding: 10px 40px 10px 12px;
+  border-radius: var(--radius-md); /* 8px */
+  border: 1px solid var(--color-border-default);
+  background-color: rgba(0, 0, 0, 0.3);
+  color: var(--color-text-primary);
+  font-size: var(--text-sm); /* 13px */
+  outline: none;
+  font-family: var(--font-mono);
+  transition: border-color var(--transition-fast);
+}
+
+.ai-input:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px var(--color-primary-muted);
+}
+
+.ai-input.error {
+  border-color: rgba(239, 68, 68, 0.5);
+}
+
+.ai-toggle-btn {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+  padding: 2px;
+  line-height: 1;
+  color: var(--color-text-tertiary);
+  transition: color var(--transition-fast);
+}
+
+.ai-toggle-btn:hover {
+  color: var(--color-text-primary);
+}
+
+.ai-verify-btn {
+  padding: 10px 18px;
+  border-radius: var(--radius-md); /* 8px */
+  border: none;
+  background: var(--gradient-primary);
+  color: var(--color-text-inverse);
+  font-size: var(--text-sm); /* 13px */
+  font-weight: var(--weight-semibold);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  flex-shrink: 0;
+}
+
+.ai-verify-btn:hover:not(:disabled) {
+  filter: brightness(1.1);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+}
+
+.ai-verify-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.ai-error-text {
+  font-size: var(--text-xs); /* 12px */
+  color: var(--color-error);
+  line-height: 1.4;
+}
+
+.ai-saved-msg {
+  margin-top: var(--space-2);
+  font-size: var(--text-xs); /* 12px */
+  color: var(--color-success);
+  font-weight: var(--weight-medium);
+}

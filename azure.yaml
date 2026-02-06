@@ -1,0 +1,11 @@
+name: djai
+metadata:
+  template: djai-oauth-proxy
+services:
+  oauth-proxy:
+    project: ./oauth-proxy
+    host: function
+    language: dotnet
+infra:
+  provider: bicep
+  path: ./infra

@@ -1,0 +1,124 @@
+/* ═══════════════════════════════════════════════════════
+   DJ.ai Design Tokens
+   CSS Custom Properties — the single source of truth
+   for all visual styling across the application.
+   ═══════════════════════════════════════════════════════ */
+
+:root {
+  /* ─── Color: Brand ─── */
+  --color-primary: #F5C518;
+  --color-primary-hover: #FFD740;
+  --color-primary-muted: rgba(245, 197, 24, 0.15);
+  --color-primary-border: rgba(245, 197, 24, 0.25);
+  --color-primary-glow: rgba(245, 197, 24, 0.35);
+  --gradient-primary: linear-gradient(135deg, #F5C518 0%, #FF9F1C 100%);
+
+  /* ─── Color: Surfaces ─── */
+  --color-bg-base: #0D0D0D;
+  --color-bg-raised: #141414;
+  --color-bg-overlay: #1A1A1A;
+  --color-bg-card: #1E1E1E;
+  --color-bg-input: #252525;
+  --color-bg-hover: #2A2A2A;
+  --color-bg-active: #333333;
+
+  /* ─── Color: Borders ─── */
+  --color-border-subtle: rgba(255, 255, 255, 0.06);
+  --color-border-default: rgba(255, 255, 255, 0.10);
+  --color-border-emphasis: rgba(255, 255, 255, 0.18);
+
+  /* ─── Color: Text ─── */
+  --color-text-primary: #F0F0F0;
+  --color-text-secondary: #A0A0A0;
+  --color-text-tertiary: #707070;
+  --color-text-disabled: #4A4A4A;
+  --color-text-inverse: #0D0D0D;
+  --color-text-accent: var(--color-primary);
+
+  /* ─── Color: Semantic ─── */
+  --color-success: #34D399;
+  --color-success-muted: rgba(52, 211, 153, 0.15);
+  --color-warning: #FBBF24;
+  --color-warning-muted: rgba(251, 191, 36, 0.15);
+  --color-error: #F87171;
+  --color-error-muted: rgba(248, 113, 113, 0.15);
+  --color-info: #60A5FA;
+  --color-info-muted: rgba(96, 165, 250, 0.15);
+
+  /* ─── Spacing (4px base) ─── */
+  --space-0: 0px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 28px;
+  --space-8: 32px;
+  --space-9: 36px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  /* ─── Typography: Font Family ─── */
+  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', 'Roboto', sans-serif;
+  --font-mono: 'SF Mono', 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+
+  /* ─── Typography: Scale ─── */
+  --text-xs: 0.6875rem;    /* 11px — captions, badges */
+  --text-sm: 0.8125rem;    /* 13px — labels, secondary */
+  --text-base: 0.9375rem;  /* 15px — body text */
+  --text-lg: 1.125rem;     /* 18px — subheadings */
+  --text-xl: 1.5rem;       /* 24px — section titles */
+  --text-2xl: 2rem;        /* 32px — page title */
+
+  /* ─── Typography: Line Heights ─── */
+  --leading-tight: 1.2;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.65;
+
+  /* ─── Typography: Font Weights ─── */
+  --weight-normal: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+
+  /* ─── Border Radius ─── */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+  --radius-full: 9999px;
+
+  /* ─── Shadows ─── */
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.2);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 8px 30px rgba(0, 0, 0, 0.5);
+  --shadow-glow: 0 0 20px var(--color-primary-glow);
+
+  /* ─── Transitions ─── */
+  --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-decelerate: cubic-bezier(0.0, 0, 0.2, 1);
+  --ease-accelerate: cubic-bezier(0.4, 0, 1, 1);
+  --duration-fast: 150ms;
+  --duration-normal: 250ms;
+  --duration-slow: 400ms;
+  --transition-fast: var(--duration-fast) var(--ease-standard);
+  --transition-normal: var(--duration-normal) var(--ease-standard);
+  --transition-slow: var(--duration-slow) var(--ease-standard);
+
+  /* ─── Z-Index Scale ─── */
+  --z-base: 0;
+  --z-raised: 10;
+  --z-dropdown: 100;
+  --z-sticky: 200;
+  --z-modal: 1000;
+  --z-overlay: 5000;
+  --z-toast: 9000;
+
+  /* ─── Layout ─── */
+  --header-height: 72px;
+  --controls-height: 88px;
+  --sidebar-width: 320px;
+  --content-max-width: 1400px;
+}

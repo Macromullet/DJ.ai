@@ -1,0 +1,44 @@
+{
+  "version": "2.0",
+  "logging": {
+    "logLevel": {
+      "default": "Warning",
+      "Function": "Information",
+      "Function.YouTubeOAuthFunctions": "Information",
+      "Function.SpotifyOAuthFunctions": "Information",
+      "Function.AppleMusicOAuthFunctions": "Information",
+      "Function.HealthCheck": "Information"
+    },
+    "applicationInsights": {
+      "samplingSettings": {
+        "isEnabled": true,
+        "maxTelemetryItemsPerSecond": 20,
+        "excludedTypes": "Exception"
+      }
+    }
+  },
+  "extensionBundle": {
+    "id": "Microsoft.Azure.Functions.ExtensionBundle",
+    "version": "[4.*, 5.0.0)"
+  },
+  "extensions": {
+    "http": {
+      "routePrefix": "api",
+      "maxOutstandingRequests": 200,
+      "maxConcurrentRequests": 100,
+      "dynamicThrottlesEnabled": true
+    }
+  },
+  "_corsNote": "IMPORTANT: In production (Azure), CORS is configured via Azure Portal > Function App > CORS settings, which OVERRIDES this section. These origins are for local development only. Update Azure CORS settings when deploying new frontend domains.",
+  "cors": {
+    "allowedOrigins": [
+      "http://localhost:5173",
+      "http://localhost:5174",
+      "http://localhost:5175",
+      "http://localhost:5176",
+      "http://localhost:5177",
+      "https://*.azurestaticapps.net"
+    ],
+    "supportCredentials": false
+  }
+}

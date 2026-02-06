@@ -1,0 +1,21 @@
+# Local development secrets
+local.settings.json
+
+# Build output
+bin/
+obj/
+
+# Azure Functions
+.azurefunctions/
+__blobstorage__/
+__queuestorage__/
+__azurite_db*__.json
+
+# VS / Rider
+.vs/
+.idea/
+*.user
+*.suo
+
+# macOS
+.DS_Store

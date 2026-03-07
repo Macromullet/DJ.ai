@@ -7,11 +7,17 @@ export interface AICommentary {
   trackId: string;
 }
 
+export interface PreviousTrackContext {
+  title: string;
+  artist: string;
+}
+
 export interface IAICommentaryService {
   generateCommentary(
     trackTitle: string,
     artist: string,
-    album?: string
+    album?: string,
+    previousTrack?: PreviousTrackContext
   ): Promise<AICommentary>;
   
   getCommentaryForTrack(trackId: string): Promise<AICommentary | null>;

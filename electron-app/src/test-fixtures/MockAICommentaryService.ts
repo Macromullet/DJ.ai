@@ -1,4 +1,4 @@
-import type { IAICommentaryService, AICommentary } from '../types/IAICommentaryService';
+import type { IAICommentaryService, AICommentary, PreviousTrackContext } from '../types/IAICommentaryService';
 
 export interface MockCommentaryCall {
   method: string;
@@ -50,8 +50,8 @@ export class MockAICommentaryService implements IAICommentaryService {
     return false;
   }
 
-  async generateCommentary(trackTitle: string, artist: string, album?: string): Promise<AICommentary> {
-    this.recordCall('generateCommentary', [trackTitle, artist, album]);
+  async generateCommentary(trackTitle: string, artist: string, album?: string, previousTrack?: PreviousTrackContext): Promise<AICommentary> {
+    this.recordCall('generateCommentary', [trackTitle, artist, album, previousTrack]);
     await this.maybeDelay();
     if (this.shouldFail()) {
       throw new Error(this.config.failureError || 'MockAICommentaryService: simulated failure');

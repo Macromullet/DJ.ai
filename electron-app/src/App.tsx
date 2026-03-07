@@ -287,7 +287,8 @@ function MainApp() {
         if (aiService) {
           try {
             const result = await Promise.race([
-              aiService.generateCommentary(nextTrack.name, nextTrack.artist, nextTrack.album),
+              aiService.generateCommentary(nextTrack.name, nextTrack.artist, nextTrack.album,
+                currentTrackRef.current ? { title: currentTrackRef.current.name, artist: currentTrackRef.current.artist } : undefined),
               new Promise<null>(r => setTimeout(() => r(null), 3000)),
             ]);
             if (result) announcement = result.text;
@@ -366,7 +367,8 @@ function MainApp() {
         if (aiService) {
           try {
             const commentary = await aiService.generateCommentary(
-              track.name, track.artist, track.album
+              track.name, track.artist, track.album,
+              currentTrackRef.current ? { title: currentTrackRef.current.name, artist: currentTrackRef.current.artist } : undefined
             );
             if (myPlayId !== playRequestIdRef.current) return;
             announcement = commentary.text;
@@ -447,7 +449,8 @@ function MainApp() {
         if (container.has('aiCommentaryService')) {
           const aiService = getAICommentaryService();
           if (aiService) {
-            const result = await aiService.generateCommentary(nextTrack.name, nextTrack.artist, nextTrack.album);
+            const result = await aiService.generateCommentary(nextTrack.name, nextTrack.artist, nextTrack.album,
+              { title: nowPlaying.name, artist: nowPlaying.artist });
             commentary = result.text;
           }
         }

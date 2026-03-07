@@ -117,7 +117,7 @@ GitHub Actions CI/CD, .NET Aspire orchestration, Azure deployment, and release f
 Provider pattern, dependency injection, OAuth-only middle tier, and state management.
 
 ### [12 — Advanced](./12-advanced/README.md)
-WebGL visualization with Three.js, streaming audio, performance optimization, and GPU computing.
+OpenTelemetry observability, Redis data structures, performance optimization, and multi-model code review.
 
 ---
 

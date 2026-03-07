@@ -2,7 +2,7 @@
 
 > React 19 powers DJ.ai's entire user interface — functional components and hooks all the way down.
 
-React is a JavaScript library for building user interfaces through composable components. DJ.ai uses **React 19** with exclusively **functional components** and **hooks** — the only class component is `ErrorBoundary` (required by React's error boundary API). The entire UI — search, playback controls, settings, onboarding wizard, audio visualizer, and toast notifications — is built as a tree of React components rooted in `App.tsx`.
+React is a JavaScript library for building user interfaces through composable components. DJ.ai uses **React 19** with exclusively **functional components** and **hooks** — the only class component is `ErrorBoundary` (required by React's error boundary API). The entire UI — search, playback controls, settings, onboarding wizard, and toast notifications — is built as a tree of React components rooted in `App.tsx`.
 
 ---
 
@@ -35,7 +35,6 @@ React is a JavaScript library for building user interfaces through composable co
 | `Settings` | `electron-app/src/components/Settings.tsx` | Provider config, API keys, TTS settings |
 | `Toast` | `electron-app/src/components/Toast.tsx` | Notification system with `useToast` hook |
 | `OnboardingWizard` | `electron-app/src/components/OnboardingWizard.tsx` | Multi-step setup flow |
-| `AudioVisualizer` | `electron-app/src/components/AudioVisualizer.tsx` | Three.js WebGL visualization |
 | `VolumeControl` | `electron-app/src/components/VolumeControl.tsx` | Volume slider + mute toggle |
 | `TrackProgressBar` | `electron-app/src/components/TrackProgressBar.tsx` | Playback progress + seek |
 | `ErrorBoundary` | `electron-app/src/components/ErrorBoundary.tsx` | Catches render errors (class component) |

@@ -104,9 +104,9 @@ DJ.ai uses several conditional rendering patterns:
 {isPlaying ? <PauseIcon /> : <PlayIcon />}
 
 // Early return — guard clause in component
-function AudioVisualizer({ isPlaying }: Props) {
-  if (!isPlaying) return null; // Don't render when not playing
-  return <canvas ref={canvasRef} />;
+function TrackProgressBar({ currentTrack }: Props) {
+  if (!currentTrack) return null; // Don't render without a track
+  return <div className="progress-bar">...</div>;
 }
 
 // Nullish coalescing — fallback for missing data
@@ -123,7 +123,6 @@ components/
 ├── Toast.tsx               # Toast notifications + useToast hook
 ├── VolumeControl.tsx       # Volume slider + mute
 ├── TrackProgressBar.tsx    # Playback progress + seek
-├── AudioVisualizer.tsx     # Three.js WebGL visualizer
 ├── ErrorBoundary.tsx       # Error catching wrapper
 ├── OAuthCallback.tsx       # OAuth redirect handler
 ├── OnboardingWizard.tsx    # Multi-step setup wizard
@@ -146,7 +145,6 @@ Each component has a **single responsibility** and communicates with its parent 
 - **`electron-app/src/components/Toast.tsx`** — Uses the **provider pattern** (React Context) to make `showToast` available anywhere in the tree
 - **`electron-app/src/components/OnboardingWizard.tsx`** — Composes step sub-components (`WelcomeStep`, `MusicProviderStep`, `AISetupStep`, `CompletionStep`)
 - **`electron-app/src/components/ErrorBoundary.tsx`** — Uses `children` prop to wrap the entire app
-- **`electron-app/src/components/AudioVisualizer.tsx`** — Receives playback state and audio source as props; manages Three.js internally
 
 ---
 

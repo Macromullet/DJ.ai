@@ -30,7 +30,6 @@ electron-app/
 │   │   ├── onboarding/    # First-launch onboarding wizard steps
 │   │   ├── OnboardingWizard.tsx/.css
 │   │   ├── Settings.tsx/.css
-│   │   ├── AudioVisualizer.tsx/.css
 │   │   ├── TrackProgressBar.tsx/.css
 │   │   ├── VolumeControl.tsx/.css
 │   │   ├── OAuthCallback.tsx

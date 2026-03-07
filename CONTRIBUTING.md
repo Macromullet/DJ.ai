@@ -154,7 +154,7 @@ Currently, testing is manual. Future PRs for automated testing are welcome!
 ### High Priority
 - [ ] Unit tests (Jest for React, xUnit for .NET)
 - [ ] E2E tests (Playwright — framework configured, needs test cases)
-- [ ] GPU-accelerated visualizations (THREE.js/WebGL)
+- [ ] GPU-accelerated visualizations (planned future feature)
 
 ### Medium Priority
 - [ ] Playlist management and persistence

@@ -51,7 +51,7 @@ dist/
 
 ### How Vite Optimizes
 
-1. **Tree shaking** — Removes unused code from React, Three.js, and utility libraries
+1. **Tree shaking** — Removes unused code from React and utility libraries
 2. **Minification** — Terser or esbuild minifies JS, removing comments and shortening names
 3. **CSS optimization** — Removes unused CSS, minifies, and deduplicates
 4. **Asset hashing** — Filenames include content hashes for cache busting
@@ -61,21 +61,21 @@ dist/
 For components that aren't needed on initial load:
 
 ```typescript
-// Lazy load the audio visualizer (Three.js is heavy)
-const AudioVisualizer = React.lazy(() =>
-  import('./components/AudioVisualizer')
+// Lazy load heavy components
+const HeavyComponent = React.lazy(() =>
+  import('./components/HeavyComponent')
 );
 
 function App() {
   return (
     <Suspense fallback={<LoadingSpinner />}>
-      {showVisualizer && <AudioVisualizer />}
+      {showComponent && <HeavyComponent />}
     </Suspense>
   );
 }
 ```
 
-This creates a separate chunk that's only downloaded when the visualizer is displayed.
+This creates a separate chunk that's only downloaded when the component is displayed.
 
 ### Analyzing the Bundle
 
@@ -96,7 +96,7 @@ In Electron, "download size" matters for the installer but not for page loads (e
 
 ## DJ.ai Connection
 
-DJ.ai's production build via `npx vite build` produces a ~319KB JavaScript bundle (before compression) — compact for an application with React, OAuth, TTS, and music provider integrations. Tree shaking removes unused exports from libraries. The planned Three.js audio visualizer will use code splitting to avoid loading WebGL code until the user enables visualization.
+DJ.ai's production build via `npx vite build` produces a ~319KB JavaScript bundle (before compression) — compact for an application with React, OAuth, TTS, and music provider integrations. Tree shaking removes unused exports from libraries. If heavy dependencies like Three.js are added in the future (e.g., for the planned GPU visualizer), code splitting with `React.lazy()` will keep initial load times fast.
 
 ## Key Takeaways
 

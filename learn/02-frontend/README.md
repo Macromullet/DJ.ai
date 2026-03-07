@@ -41,7 +41,7 @@ Web APIs (browser platform)
 ## 📚 Topics
 
 ### [React](./react/README.md)
-The UI framework for DJ.ai's entire interface — from the search bar to the audio visualizer.
+The UI framework for DJ.ai's entire interface — from the search bar to the playback controls.
 
 - **[Hooks](./react/hooks/README.md)** — The foundation of DJ.ai's React code
   - [useState & useReducer](./react/hooks/useState-and-useReducer.md)

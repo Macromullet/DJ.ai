@@ -38,9 +38,9 @@ dist/
 Tree shaking removes unused code from the bundle. Because Vite uses ES modules (static imports), it can analyze which exports are actually used and eliminate the rest:
 
 ```typescript
-// Three.js is huge — but DJ.ai only imports what it needs
-import { Scene, PerspectiveCamera, WebGLRenderer } from 'three';
-// Tree shaking removes unused Three.js modules (physics, loaders, etc.)
+// ES module imports are statically analyzable
+import { useState, useEffect } from 'react';
+// Tree shaking removes unused exports from libraries
 ```
 
 This is why ES modules matter — `import { X }` is statically analyzable, while `require()` is not.
@@ -49,13 +49,13 @@ This is why ES modules matter — `import { X }` is statically analyzable, while
 
 Vite automatically splits code into separate chunks for optimal loading:
 
-- **Vendor chunk** — third-party libraries (React, Three.js, React Router)
+- **Vendor chunk** — third-party libraries (React, React Router)
 - **App chunk** — your application code
 - **Dynamic imports** — code loaded on demand
 
 ```typescript
 // Dynamic import — loaded only when needed
-const AudioVisualizer = React.lazy(() => import('./components/AudioVisualizer'));
+const HeavyComponent = React.lazy(() => import('./components/HeavyComponent'));
 ```
 
 For DJ.ai (packaged in Electron, loaded from disk), code splitting's main benefit is **cache efficiency** — vendor code doesn't change often, so Electron caches it separately.
@@ -76,7 +76,7 @@ DJ.ai's production build produces a compact bundle:
 dist/
 ├── index.html        (~1 KB)
 ├── assets/
-│   ├── index.js      (~250 KB gzipped — React, app code, Three.js)
+│   ├── index.js      (~250 KB gzipped — React, app code)
 │   └── index.css     (~15 KB — all styles)
 ```
 

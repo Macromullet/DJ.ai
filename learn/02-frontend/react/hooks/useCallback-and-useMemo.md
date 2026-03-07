@@ -123,7 +123,6 @@ const handleClick = () => console.log('clicked');
 - **`electron-app/src/App.tsx`** — `useCallback` for `handleSearch`, `handlePlayTrack`, `handleNextTrack`, `handlePreviousTrack`, `togglePlayback`, and other handlers passed to child components and registered with Electron IPC
 - **`electron-app/src/components/Toast.tsx`** — `useCallback` for the `showToast` function returned by `useToast` hook to prevent consumer re-renders
 - **`electron-app/src/components/Settings.tsx`** — `useCallback` for onChange handlers passed to form inputs
-- **`electron-app/src/components/AudioVisualizer.tsx`** — `useMemo` for Three.js geometries and materials that shouldn't be recreated on every render
 
 ---
 

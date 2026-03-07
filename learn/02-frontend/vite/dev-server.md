@@ -21,7 +21,7 @@ Vite:
 ```
 
 Vite achieves this by:
-1. **Pre-bundling dependencies** — React, Three.js, etc. are bundled once with esbuild (10-100x faster than webpack)
+1. **Pre-bundling dependencies** — React, React Router, etc. are bundled once with esbuild (10-100x faster than webpack)
 2. **Serving source as ESM** — your `.tsx` files are transpiled on-demand and served as ES modules
 3. **Updating only changed modules** — HMR sends the updated module to the browser via WebSocket
 
@@ -102,7 +102,7 @@ Vite's dev server automatically serves `index.html` for all routes that don't ma
 - Port **5173** is DJ.ai's standard dev port — OAuth callback URLs depend on it
 - Aspire uses `targetPort: 5173` (not `port`) to avoid port conflicts
 - The dev server provides **SPA fallback** — all routes serve `index.html` for React Router
-- Pre-bundling with **esbuild** makes dependency resolution fast (React, Three.js, etc.)
+- Pre-bundling with **esbuild** makes dependency resolution fast (React, React Router, etc.)
 
 ---
 

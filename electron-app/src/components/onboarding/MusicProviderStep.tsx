@@ -18,22 +18,16 @@ interface ProviderInfo {
 
 const PROVIDER_LIST: ProviderInfo[] = [
   {
-    id: 'youtube',
-    name: 'YouTube Music',
-    emoji: '▶️',
-    description: 'Stream music and watch videos from YouTube\'s vast library.',
+    id: 'apple',
+    name: 'Apple Music',
+    emoji: '🍎',
+    description: 'Listen to over 100 million songs with spatial audio.',
   },
   {
     id: 'spotify',
     name: 'Spotify',
     emoji: '🟢',
     description: 'Access millions of songs, podcasts, and playlists.',
-  },
-  {
-    id: 'apple',
-    name: 'Apple Music',
-    emoji: '🍎',
-    description: 'Listen to over 100 million songs with spatial audio.',
   },
 ];
 

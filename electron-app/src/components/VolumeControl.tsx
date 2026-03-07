@@ -3,11 +3,6 @@ import './VolumeControl.css';
 
 interface VolumeControlProps {
   /**
-   * YouTube player instance (if using YouTube provider)
-   */
-  youtubePlayer?: any;
-  
-  /**
    * Initial volume (0-100)
    */
   initialVolume?: number;
@@ -25,28 +20,25 @@ interface VolumeControlProps {
  * Persists volume preference to localStorage.
  * Works with any music provider.
  */
-export function VolumeControl({ youtubePlayer, initialVolume = 80, onVolumeChange }: VolumeControlProps) {
+export function VolumeControl({ initialVolume = 80, onVolumeChange }: VolumeControlProps) {
   const [volume, setVolume] = useState(() => {
     // Load saved volume from localStorage
     const saved = localStorage.getItem('djai_volume');
-    return saved ? parseInt(saved, 10) : initialVolume;
+    const parsed = saved !== null ? parseInt(saved, 10) : NaN;
+    return Number.isNaN(parsed) ? initialVolume : parsed;
   });
   
   const [isMuted, setIsMuted] = useState(false);
   const [_volumeBeforeMute, setVolumeBeforeMute] = useState(volume);
 
-  // Apply volume to YouTube player when it changes
+  // Notify parent when volume or mute state changes
   useEffect(() => {
-    if (youtubePlayer && typeof youtubePlayer.setVolume === 'function') {
-      try {
-        youtubePlayer.setVolume(isMuted ? 0 : volume);
-      } catch (error) {
-        // Player not ready yet
-      }
+    if (onVolumeChange) {
+      onVolumeChange(isMuted ? 0 : volume);
     }
-  }, [volume, isMuted, youtubePlayer]);
+  }, [volume, isMuted, onVolumeChange]);
 
-  const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleVolumeChange= (e: React.ChangeEvent<HTMLInputElement>) => {
     const newVolume = parseInt(e.target.value, 10);
     setVolume(newVolume);
     
@@ -58,10 +50,6 @@ export function VolumeControl({ youtubePlayer, initialVolume = 80, onVolumeChang
       setIsMuted(false);
     }
     
-    // Notify parent
-    if (onVolumeChange) {
-      onVolumeChange(newVolume);
-    }
   };
 
   const toggleMute = () => {

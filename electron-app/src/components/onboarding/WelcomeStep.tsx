@@ -20,7 +20,7 @@ export const WelcomeStep: React.FC<WelcomeStepProps> = ({ onNext }) => {
           <div>
             <div className="welcome-preview-title">Connect Your Music</div>
             <div className="welcome-preview-desc">
-              Link YouTube Music, Spotify, or Apple Music
+              Link Apple Music or Spotify
             </div>
           </div>
         </div>

@@ -1,7 +1,7 @@
 /**
  * Unified Music Provider Interface
  * 
- * All music services (YouTube Music, Spotify, Apple Music) implement this interface
+ * All music services (Spotify, Apple Music) implement this interface
  * to provide consistent functionality across different platforms.
  */
 
@@ -23,7 +23,7 @@ export interface SearchResult {
   durationMs?: number;
   /**
    * Provider-specific data that can be used to play the track
-   * e.g., YouTube video ID, Spotify URI, Apple Music ID
+   * e.g., Spotify URI, Apple Music ID
    */
   providerData: any;
 }
@@ -48,7 +48,7 @@ export interface IMusicProvider {
   /**
    * Unique identifier for this provider
    */
-  readonly providerId: 'youtube' | 'spotify' | 'apple';
+  readonly providerId: 'youtube' | 'spotify' | 'apple';  // 'youtube' kept for backward compat with YouTubeMusicProvider.ts
   
   /**
    * Display name for the provider

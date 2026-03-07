@@ -1,7 +1,6 @@
 // Production Mode Configuration
 // Bootstrap with production implementations using Dependency Injection
 
-import { YouTubeMusicProvider } from '../providers/YouTubeMusicProvider';
 import { SpotifyProvider } from '../providers/SpotifyProvider';
 import { AppleMusicProvider } from '../providers/AppleMusicProvider';
 import { WebSpeechTTSService } from '../services/WebSpeechTTSService';
@@ -13,7 +12,7 @@ import { container, registerServices } from './container';
 import type { ServiceContainer } from './container';
 
 export interface ProductionModeOptions {
-  provider: 'youtube' | 'spotify' | 'apple';
+  provider: 'spotify' | 'apple';
   ttsProvider?: 'web-speech' | 'openai' | 'gemini' | 'elevenlabs';
   aiProvider?: 'openai' | 'anthropic';
   openaiApiKey?: string;
@@ -35,9 +34,6 @@ export function initializeProductionMode(options: ProductionModeOptions): Servic
   // Create music provider based on selection
   let musicProvider;
   switch (options.provider) {
-    case 'youtube':
-      musicProvider = new YouTubeMusicProvider();
-      break;
     case 'spotify':
       musicProvider = new SpotifyProvider();
       break;

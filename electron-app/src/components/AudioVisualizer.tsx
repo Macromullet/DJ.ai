@@ -4,7 +4,7 @@ import './AudioVisualizer.css';
 
 interface AudioVisualizerProps {
   /**
-   * Audio element or YouTube player to visualize
+   * Audio element to visualize
    */
   audioSource?: HTMLAudioElement | any;
   
@@ -113,9 +113,8 @@ export function AudioVisualizer({ audioSource, isPlaying, mode = 'bars' }: Audio
       dataArrayRef.current = dataArray;
 
       // Connect audio source
-      // For YouTube IFrame player, we can't directly access audio
-      // For now, use fallback visualization (isSourceConnectedRef stays false)
-      // TODO: For HTML5 audio elements, use:
+      // For HTML5 audio elements, use createMediaElementSource
+      // TODO: Connect MusicKit JS or Spotify SDK audio output
       //   const source = audioContext.createMediaElementSource(audioSource);
       //   source.connect(analyser);
       //   analyser.connect(audioContext.destination);

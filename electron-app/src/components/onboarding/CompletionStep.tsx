@@ -8,7 +8,6 @@ interface CompletionStepProps {
 }
 
 const PROVIDER_LABELS: Record<string, string> = {
-  youtube: 'YouTube Music',
   spotify: 'Spotify',
   apple: 'Apple Music',
 };
@@ -23,7 +22,7 @@ export const CompletionStep: React.FC<CompletionStepProps> = ({
   connectedProviders,
   savedApiKeys,
 }) => {
-  const musicProviders = ['youtube', 'spotify', 'apple'];
+  const musicProviders = ['spotify', 'apple'];
   const aiProviders = ['openai', 'anthropic'];
 
   const hasAnySetup = connectedProviders.size > 0 || savedApiKeys.size > 0;

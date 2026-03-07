@@ -308,7 +308,8 @@ public class RedisDeviceAuthService : IDeviceAuthService
             foreach (var key in oldest)
             {
                 _fallbackDevices.TryRemove(key, out _);
-                _fallbackRequestHistory.TryRemove(key, out _);
+                // Preserve request history — evicted devices that re-register
+                // must still be rate-limited by their prior request history.
             }
         }
 

@@ -175,7 +175,7 @@ export class AICommentaryService implements IAICommentaryService {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${this.config.openaiApiKey}`
+          // Auth header injected by main process — never sent from renderer
         },
         body: requestBody,
       });
@@ -220,8 +220,8 @@ export class AICommentaryService implements IAICommentaryService {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-api-key': this.config.anthropicApiKey,
           'anthropic-version': '2023-06-01',
+          // Auth header injected by main process — never sent from renderer
         },
         body: {
           model: 'claude-sonnet-4-20250514',

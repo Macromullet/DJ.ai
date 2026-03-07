@@ -1,13 +1,16 @@
 /**
  * Secret Storage Utility
  *
- * Uses Electron safeStorage API for proper encryption when available.
- * Falls back to plaintext localStorage in browser dev mode.
+ * API keys are managed by the Electron main process. The renderer NEVER
+ * receives plaintext keys. This module provides a thin IPC wrapper:
+ *   - saveApiKeys: sends new keys to main for encrypted storage
+ *   - getApiKeyStatus: returns which keys are configured (boolean map)
+ *   - clearApiKeys: wipes all stored keys
+ *
+ * In browser dev mode (no Electron), falls back to plaintext localStorage.
  */
 
-const SECRETS_KEY = 'djai_secrets_encrypted';
 const PLAIN_KEY = 'djai_secrets_plain';
-const LEGACY_KEY = 'djai_secrets';
 
 export interface ApiKeys {
   openaiApiKey: string;
@@ -16,6 +19,20 @@ export interface ApiKeys {
   geminiApiKey: string;
 }
 
+export interface ApiKeyStatus {
+  openaiApiKey: boolean;
+  anthropicApiKey: boolean;
+  elevenLabsApiKey: boolean;
+  geminiApiKey: boolean;
+}
+
+const DEFAULT_STATUS: ApiKeyStatus = {
+  openaiApiKey: false,
+  anthropicApiKey: false,
+  elevenLabsApiKey: false,
+  geminiApiKey: false,
+};
+
 const DEFAULT_KEYS: ApiKeys = {
   openaiApiKey: '',
   anthropicApiKey: '',
@@ -23,66 +40,84 @@ const DEFAULT_KEYS: ApiKeys = {
   geminiApiKey: '',
 };
 
-async function isElectronSafeStorageAvailable(): Promise<boolean> {
-  try {
-    return await (window as any).electron?.safeStorage?.isAvailable() ?? false;
-  } catch {
-    return false;
-  }
+function isElectronAvailable(): boolean {
+  return !!(window as any).electron?.apiKeys;
 }
 
 /**
  * Returns true when running in browser dev mode (e.g., http://localhost).
- * In packaged Electron, the protocol is 'file:' or a custom scheme.
  */
 function isBrowserDevMode(): boolean {
   return window.location.protocol.startsWith('http');
 }
 
+/**
+ * Save API keys. In Electron, keys are sent to the main process which
+ * encrypts and stores them — they never come back to the renderer.
+ * In browser dev mode, falls back to plaintext localStorage.
+ */
 export async function saveApiKeys(keys: Record<string, string>): Promise<void> {
-  const json = JSON.stringify(keys);
-  if (await isElectronSafeStorageAvailable()) {
-    const encrypted = await (window as any).electron.safeStorage.encrypt(json);
-    localStorage.setItem(SECRETS_KEY, encrypted);
+  if (isElectronAvailable()) {
+    await (window as any).electron.apiKeys.save(keys);
+    // Clean up any legacy plaintext storage from earlier versions
+    localStorage.removeItem(PLAIN_KEY);
+    localStorage.removeItem('djai_secrets');
+    localStorage.removeItem('djai_secrets_encrypted');
   } else if (isBrowserDevMode()) {
-    // Plaintext fallback is acceptable in browser dev mode only (http://localhost)
-    console.warn('safeStorage not available — storing keys unencrypted (dev mode only)');
-    localStorage.setItem(PLAIN_KEY, json);
+    console.warn('Electron not available — storing keys unencrypted (dev mode only)');
+    localStorage.setItem(PLAIN_KEY, JSON.stringify(keys));
   } else {
-    throw new Error(
-      'Cannot save API keys: safeStorage is unavailable in packaged mode. ' +
-      'Plaintext fallback is disabled for security.'
-    );
+    throw new Error('Cannot save API keys: Electron API not available in packaged mode.');
   }
 }
 
+/**
+ * Get the status of configured API keys (which keys are set).
+ * Returns boolean flags — NEVER plaintext keys.
+ */
+export async function getApiKeyStatus(): Promise<ApiKeyStatus> {
+  try {
+    if (isElectronAvailable()) {
+      return await (window as any).electron.apiKeys.getStatus();
+    } else if (isBrowserDevMode()) {
+      const plain = localStorage.getItem(PLAIN_KEY) || localStorage.getItem('djai_secrets');
+      if (!plain) return { ...DEFAULT_STATUS };
+      const parsed = JSON.parse(plain);
+      return {
+        openaiApiKey: !!parsed.openaiApiKey,
+        anthropicApiKey: !!parsed.anthropicApiKey,
+        elevenLabsApiKey: !!parsed.elevenLabsApiKey,
+        geminiApiKey: !!parsed.geminiApiKey,
+      };
+    }
+    return { ...DEFAULT_STATUS };
+  } catch (error) {
+    console.error('Failed to get API key status:', error);
+    return { ...DEFAULT_STATUS };
+  }
+}
+
+/**
+ * Legacy compatibility: returns placeholder keys based on status.
+ * Services use these for truthiness checks only — real keys are injected
+ * by the main process at the HTTP request level.
+ */
 export async function getApiKeys(): Promise<ApiKeys> {
   try {
-    if (await isElectronSafeStorageAvailable()) {
-      const encrypted = localStorage.getItem(SECRETS_KEY);
-      if (!encrypted) {
-        // Migrate from legacy unencrypted storage
-        const legacy = localStorage.getItem(LEGACY_KEY) || localStorage.getItem(PLAIN_KEY);
-        if (legacy) {
-          const keys = { ...DEFAULT_KEYS, ...JSON.parse(legacy) };
-          await saveApiKeys(keys);
-          localStorage.removeItem(LEGACY_KEY);
-          localStorage.removeItem(PLAIN_KEY);
-          return keys;
-        }
-        return { ...DEFAULT_KEYS };
-      }
-      const json = await (window as any).electron.safeStorage.decrypt(encrypted);
-      return { ...DEFAULT_KEYS, ...JSON.parse(json) };
+    if (isElectronAvailable()) {
+      const status = await getApiKeyStatus();
+      return {
+        openaiApiKey: status.openaiApiKey ? 'configured' : '',
+        anthropicApiKey: status.anthropicApiKey ? 'configured' : '',
+        elevenLabsApiKey: status.elevenLabsApiKey ? 'configured' : '',
+        geminiApiKey: status.geminiApiKey ? 'configured' : '',
+      };
     } else if (isBrowserDevMode()) {
-      const plain = localStorage.getItem(PLAIN_KEY) || localStorage.getItem(LEGACY_KEY);
+      // In browser dev mode, return actual keys (needed for direct fetch)
+      const plain = localStorage.getItem(PLAIN_KEY) || localStorage.getItem('djai_secrets');
       return plain ? { ...DEFAULT_KEYS, ...JSON.parse(plain) } : { ...DEFAULT_KEYS };
-    } else {
-      throw new Error(
-        'Cannot load API keys: safeStorage is unavailable in packaged mode. ' +
-        'Plaintext fallback is disabled for security.'
-      );
     }
+    return { ...DEFAULT_KEYS };
   } catch (error) {
     console.error('Failed to load API keys:', error);
     return { ...DEFAULT_KEYS };
@@ -90,7 +125,10 @@ export async function getApiKeys(): Promise<ApiKeys> {
 }
 
 export async function clearApiKeys(): Promise<void> {
-  localStorage.removeItem(SECRETS_KEY);
+  if (isElectronAvailable()) {
+    await (window as any).electron.apiKeys.clear();
+  }
   localStorage.removeItem(PLAIN_KEY);
-  localStorage.removeItem(LEGACY_KEY);
+  localStorage.removeItem('djai_secrets');
+  localStorage.removeItem('djai_secrets_encrypted');
 }

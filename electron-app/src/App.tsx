@@ -72,7 +72,7 @@ function MainApp() {
 
   const { showToast } = useToast();
 
-  // Load API keys asynchronously (safeStorage is async in Electron)
+  // Load API keys asynchronously (returns 'configured' placeholders in Electron)
   useEffect(() => {
     getApiKeys().then(secrets => {
       setSettings(prev => ({
@@ -698,13 +698,18 @@ function MainApp() {
   const handleSettingsSave = (newSettings: SettingsConfig) => {
     setSettings(newSettings);
 
-    // Persist API keys in a separate store (fire-and-forget)
-    void saveApiKeys({
-      openaiApiKey: newSettings.openaiApiKey,
-      anthropicApiKey: newSettings.anthropicApiKey,
-      elevenLabsApiKey: newSettings.elevenLabsApiKey,
-      geminiApiKey: newSettings.geminiApiKey,
-    });
+    // Only save keys the user actually changed (non-empty and not 'configured' placeholder)
+    const keysToSave: Record<string, string> = {};
+    const keyFields = ['openaiApiKey', 'anthropicApiKey', 'elevenLabsApiKey', 'geminiApiKey'] as const;
+    for (const field of keyFields) {
+      const val = newSettings[field];
+      if (val && val !== 'configured') {
+        keysToSave[field] = val;
+      }
+    }
+    if (Object.keys(keysToSave).length > 0) {
+      void saveApiKeys(keysToSave);
+    }
 
     // Strip secrets before writing the main settings blob
     const { openaiApiKey: _o, anthropicApiKey: _a, elevenLabsApiKey: _e, geminiApiKey: _g, ...safeSettings } = newSettings;

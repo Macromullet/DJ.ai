@@ -21,11 +21,12 @@ contextBridge.exposeInMainWorld('electron', {
     ttsRequest: (options) => ipcRenderer.invoke('ai-tts-request', options),
   },
 
-  // safeStorage for encrypting API keys at rest
-  safeStorage: {
-    isAvailable: () => ipcRenderer.invoke('safe-storage-available'),
-    encrypt: (plaintext) => ipcRenderer.invoke('safe-storage-encrypt', plaintext),
-    decrypt: (encrypted) => ipcRenderer.invoke('safe-storage-decrypt', encrypted),
+  // API key management — keys are stored and managed by the main process only.
+  // The renderer never receives plaintext keys.
+  apiKeys: {
+    save: (keys) => ipcRenderer.invoke('save-api-keys', keys),
+    getStatus: () => ipcRenderer.invoke('get-api-key-status'),
+    clear: () => ipcRenderer.invoke('clear-api-keys'),
   },
   
   // Desktop notifications

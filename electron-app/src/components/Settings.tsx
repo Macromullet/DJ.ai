@@ -41,15 +41,44 @@ interface SettingsProps {
 }
 
 export function Settings({ config, onSave, onClose, onConnectProvider, onDisconnectProvider }: SettingsProps) {
-  const [localConfig, setLocalConfig] = useState<SettingsConfig>(config);
+  // Strip 'configured' placeholders from key fields for display
+  const [localConfig, setLocalConfig] = useState<SettingsConfig>(() => ({
+    ...config,
+    openaiApiKey: config.openaiApiKey === 'configured' ? '' : config.openaiApiKey,
+    anthropicApiKey: config.anthropicApiKey === 'configured' ? '' : config.anthropicApiKey,
+    elevenLabsApiKey: config.elevenLabsApiKey === 'configured' ? '' : config.elevenLabsApiKey,
+    geminiApiKey: config.geminiApiKey === 'configured' ? '' : config.geminiApiKey,
+  }));
+
+  // Track which keys were already configured when Settings opened
+  const [keyStatus] = useState({
+    openaiApiKey: !!config.openaiApiKey,
+    anthropicApiKey: !!config.anthropicApiKey,
+    elevenLabsApiKey: !!config.elevenLabsApiKey,
+    geminiApiKey: !!config.geminiApiKey,
+  });
 
   useEffect(() => {
-    setLocalConfig(config);
+    setLocalConfig({
+      ...config,
+      openaiApiKey: config.openaiApiKey === 'configured' ? '' : config.openaiApiKey,
+      anthropicApiKey: config.anthropicApiKey === 'configured' ? '' : config.anthropicApiKey,
+      elevenLabsApiKey: config.elevenLabsApiKey === 'configured' ? '' : config.elevenLabsApiKey,
+      geminiApiKey: config.geminiApiKey === 'configured' ? '' : config.geminiApiKey,
+    });
   }, [config]);
 
   const handleSave = () => {
-    // Persistence is handled by the parent via onSave — do not duplicate here.
-    onSave(localConfig);
+    // For key fields: if user left it empty and it was previously configured,
+    // preserve the 'configured' placeholder so App.tsx knows not to clear it
+    const mergedConfig = { ...localConfig };
+    const keyFields = ['openaiApiKey', 'anthropicApiKey', 'elevenLabsApiKey', 'geminiApiKey'] as const;
+    for (const field of keyFields) {
+      if (!mergedConfig[field] && keyStatus[field]) {
+        mergedConfig[field] = 'configured';
+      }
+    }
+    onSave(mergedConfig);
     onClose();
   };
 
@@ -162,7 +191,7 @@ export function Settings({ config, onSave, onClose, onConnectProvider, onDisconn
               </label>
               <input
                 type="password"
-                placeholder="sk-..."
+                placeholder={keyStatus.openaiApiKey ? '••• Key configured (enter new to replace)' : 'sk-...'}
                 value={localConfig.openaiApiKey}
                 onChange={(e) => setLocalConfig({...localConfig, openaiApiKey: e.target.value})}
                 disabled={localConfig.aiProvider !== 'openai'}
@@ -184,7 +213,7 @@ export function Settings({ config, onSave, onClose, onConnectProvider, onDisconn
               </label>
               <input
                 type="password"
-                placeholder="sk-ant-..."
+                placeholder={keyStatus.anthropicApiKey ? '••• Key configured (enter new to replace)' : 'sk-ant-...'}
                 value={localConfig.anthropicApiKey}
                 onChange={(e) => setLocalConfig({...localConfig, anthropicApiKey: e.target.value})}
                 disabled={localConfig.aiProvider !== 'anthropic'}
@@ -246,7 +275,7 @@ export function Settings({ config, onSave, onClose, onConnectProvider, onDisconn
                       <label>Gemini API Key</label>
                       <input
                         type="password"
-                        placeholder="Enter Gemini API key"
+                        placeholder={keyStatus.geminiApiKey ? '••• Key configured (enter new to replace)' : 'Enter Gemini API key'}
                         value={localConfig.geminiApiKey}
                         onChange={(e) => setLocalConfig({...localConfig, geminiApiKey: e.target.value})}
                         className="api-key-input"
@@ -261,7 +290,7 @@ export function Settings({ config, onSave, onClose, onConnectProvider, onDisconn
                     <label>ElevenLabs API Key</label>
                     <input
                       type="password"
-                      placeholder="Enter ElevenLabs API key"
+                      placeholder={keyStatus.elevenLabsApiKey ? '••• Key configured (enter new to replace)' : 'Enter ElevenLabs API key'}
                       value={localConfig.elevenLabsApiKey}
                       onChange={(e) => setLocalConfig({...localConfig, elevenLabsApiKey: e.target.value})}
                       className="api-key-input"

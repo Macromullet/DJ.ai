@@ -15,6 +15,16 @@ const mockElectron = {
   oauthDeepLink: {
     onCallback: vi.fn().mockReturnValue(() => {}),
   },
+  apiKeys: {
+    save: vi.fn().mockResolvedValue(true),
+    getStatus: vi.fn().mockResolvedValue({
+      openaiApiKey: false,
+      anthropicApiKey: false,
+      elevenLabsApiKey: false,
+      geminiApiKey: false,
+    }),
+    clear: vi.fn().mockResolvedValue(true),
+  },
   tray: {
     onPlayPause: vi.fn().mockReturnValue(() => {}),
     onNext: vi.fn().mockReturnValue(() => {}),

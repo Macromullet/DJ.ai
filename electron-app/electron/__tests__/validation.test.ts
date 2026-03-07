@@ -358,15 +358,21 @@ describe('buildCSP', () => {
     }
   })
 
-  // CSP security: document that unsafe-inline IS present (required by third-party SDKs)
-  // This is a known trade-off, not a bug — but we explicitly track it
-  it('should contain unsafe-inline only in script-src and style-src', () => {
+  // CSP security: in production (default), unsafe-inline should only be in style-src
+  it('should contain unsafe-inline only in style-src in production mode', () => {
     const directives = csp.split(';').map((d) => d.trim()).filter(Boolean)
     const directivesWithUnsafeInline = directives.filter((d) => d.includes("'unsafe-inline'"))
     const directiveNames = directivesWithUnsafeInline.map((d) => d.split(/\s+/)[0])
-    // unsafe-inline is accepted ONLY in script-src (music SDKs) and style-src
-    expect(directiveNames).toEqual(expect.arrayContaining(['script-src', 'style-src']))
-    expect(directiveNames).toHaveLength(2)
+    // In production, unsafe-inline is only in style-src (React needs it)
+    expect(directiveNames).toEqual(['style-src'])
+    expect(directiveNames).toHaveLength(1)
+  })
+
+  it('should include unsafe-inline in script-src in dev mode', () => {
+    const devCsp = validation.buildCSP({ isDev: true })
+    const directives = devCsp.split(';').map((d) => d.trim()).filter(Boolean)
+    const scriptSrc = directives.find((d) => d.startsWith('script-src'))
+    expect(scriptSrc).toContain("'unsafe-inline'")
   })
 })
 

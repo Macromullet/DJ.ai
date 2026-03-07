@@ -695,7 +695,7 @@ function MainApp() {
     return () => { unsubs.forEach(fn => typeof fn === 'function' && fn()); };
   }, []);
 
-  const handleSettingsSave = (newSettings: SettingsConfig) => {
+  const handleSettingsSave = async (newSettings: SettingsConfig) => {
     // Sanitize: replace plaintext keys with 'configured' placeholder before
     // storing in React state — prevents keys lingering in memory/DevTools
     const sanitized = { ...newSettings };
@@ -708,22 +708,25 @@ function MainApp() {
         sanitized[field] = 'configured';
       }
     }
-    setSettings(sanitized);
 
-    if (Object.keys(keysToSave).length > 0) {
-      void saveApiKeys(keysToSave);
-    }
-
-    // Also send empty-string deletions for keys the user explicitly cleared
-    const keysToDelete: Record<string, string> = {};
+    // Merge saves and deletions into a single atomic call to avoid races
     for (const field of keyFields) {
       if (newSettings[field] === '') {
-        keysToDelete[field] = '';
+        keysToSave[field] = '';
       }
     }
-    if (Object.keys(keysToDelete).length > 0) {
-      void saveApiKeys(keysToDelete);
+
+    if (Object.keys(keysToSave).length > 0) {
+      try {
+        await saveApiKeys(keysToSave);
+      } catch (err) {
+        console.error('Failed to save API keys:', err);
+        showToast('Failed to save API keys', 'error');
+        return;
+      }
     }
+
+    setSettings(sanitized);
 
     // Strip secrets before writing the main settings blob
     const { openaiApiKey: _o, anthropicApiKey: _a, elevenLabsApiKey: _e, geminiApiKey: _g, ...safeSettings } = newSettings;

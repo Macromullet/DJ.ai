@@ -48,7 +48,8 @@ function persistApiKeys() {
     const filePath = getApiKeysPath();
     const tmpPath = filePath + '.tmp';
     // Atomic write: write to temp file, then rename to prevent corruption on crash
-    fs.writeFileSync(tmpPath, encrypted.toString('base64'), 'utf-8');
+    // Mode 0o600: owner read/write only (no group/other access)
+    fs.writeFileSync(tmpPath, encrypted.toString('base64'), { encoding: 'utf-8', mode: 0o600 });
     fs.renameSync(tmpPath, filePath);
   } catch (err) {
     console.error('Failed to persist API keys:', err.message);

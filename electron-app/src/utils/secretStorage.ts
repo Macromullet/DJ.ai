@@ -65,7 +65,17 @@ export async function saveApiKeys(keys: Record<string, string>): Promise<void> {
     localStorage.removeItem('djai_secrets_encrypted');
   } else if (isBrowserDevMode()) {
     console.warn('Electron not available — storing keys unencrypted (dev mode only)');
-    localStorage.setItem(PLAIN_KEY, JSON.stringify(keys));
+    // Read-merge-write: preserve existing keys not in this update
+    const existing = JSON.parse(localStorage.getItem(PLAIN_KEY) || '{}');
+    const merged = { ...existing };
+    for (const [k, v] of Object.entries(keys)) {
+      if (v === '') {
+        delete merged[k];
+      } else {
+        merged[k] = v;
+      }
+    }
+    localStorage.setItem(PLAIN_KEY, JSON.stringify(merged));
   } else {
     throw new Error('Cannot save API keys: Electron API not available in packaged mode.');
   }

@@ -322,18 +322,16 @@ public class RedisDeviceAuthService : IDeviceAuthService
                 if (!_fallbackDevices.ContainsKey(key) &&
                     _fallbackRequestHistory.TryGetValue(key, out var history))
                 {
-                    bool allExpired;
                     lock (history)
                     {
-                        allExpired = history.Count == 0 || history.All(r => (DateTime.UtcNow - r).TotalHours > 24);
+                        var allExpired = history.Count == 0 || history.All(r => (DateTime.UtcNow - r).TotalHours > 24);
                         if (!allExpired) continue;
-                        // Re-check under lock: if a concurrent request snuck in
-                        // between our check and removal, the list is still valid.
-                        // ICollection<KeyValuePair>.Remove ensures we only remove
-                        // if the reference is still the same object we inspected.
+                        // Remove while holding the lock so a concurrent request
+                        // that called GetOrAdd (same reference) and added a new
+                        // timestamp cannot be silently discarded.
+                        ((ICollection<KeyValuePair<string, List<DateTime>>>)_fallbackRequestHistory)
+                            .Remove(new KeyValuePair<string, List<DateTime>>(key, history));
                     }
-                    ((ICollection<KeyValuePair<string, List<DateTime>>>)_fallbackRequestHistory)
-                        .Remove(new KeyValuePair<string, List<DateTime>>(key, history));
                 }
             }
         }

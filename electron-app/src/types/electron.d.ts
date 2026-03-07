@@ -42,9 +42,9 @@ interface ElectronBridge {
   };
   tray: {
     updateInfo: (info: { title: string; artist: string; isPlaying: boolean }) => Promise<boolean>;
-    onPlaybackToggle: (callback: () => void) => void;
-    onNextTrack: (callback: () => void) => void;
-    onPreviousTrack: (callback: () => void) => void;
+    onPlaybackToggle: (callback: () => void) => () => void;
+    onNextTrack: (callback: () => void) => () => void;
+    onPreviousTrack: (callback: () => void) => () => void;
   };
   isElectron: true;
 }

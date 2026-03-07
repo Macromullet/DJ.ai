@@ -1,7 +1,7 @@
 import { ITTSService, TTSVoice } from '../types/ITTSService';
 
 const GEMINI_TTS_ENDPOINT =
-  'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent';
+  'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent';
 
 const PCM_SAMPLE_RATE = 24000;
 const PCM_CHANNELS = 1;
@@ -54,6 +54,9 @@ export class GeminiTTSService implements ITTSService {
   private voice: GeminiVoiceName;
   private currentAudio: HTMLAudioElement | null = null;
   private audioContext: AudioContext | null = null;
+  private requestId: number = 0;
+  private currentObjectUrl: string | null = null;
+  private resolveCurrentPlayback: (() => void) | null = null;
 
   constructor(config: GeminiTTSConfig) {
     this.apiKey = config.apiKey;
@@ -62,38 +65,60 @@ export class GeminiTTSService implements ITTSService {
 
   async speak(text: string): Promise<void> {
     this.stop();
+    const myRequestId = ++this.requestId;
 
-    const pcmBase64 = await this.fetchAudio(text);
-    const pcmData = this.base64ToArrayBuffer(pcmBase64);
-    const wavData = this.pcmToWav(pcmData);
+    const { data, mimeType } = await this.fetchAudio(text);
+    const rawData = this.base64ToArrayBuffer(data);
+    const isPcm = this.needsPcmConversion(mimeType);
+    const audioData = isPcm ? this.pcmToWav(rawData) : rawData;
+    const blobType = isPcm ? 'audio/wav' : (mimeType.toLowerCase() === 'audio/mp3' ? 'audio/mpeg' : mimeType);
+
+    if (myRequestId !== this.requestId) return;
 
     try {
-      await this.playWithAudioElement(wavData);
+      await this.playWithAudioElement(audioData, blobType);
     } catch (error) {
       console.warn('[Gemini TTS] Audio element failed, trying AudioContext:', error);
-      await this.playWithAudioContext(wavData);
+      if (myRequestId !== this.requestId) return;
+      await this.playWithAudioContext(audioData);
     }
   }
 
   async renderToBlob(text: string): Promise<Blob> {
-    const pcmBase64 = await this.fetchAudio(text);
-    const pcmData = this.base64ToArrayBuffer(pcmBase64);
-    const wavData = this.pcmToWav(pcmData);
-    return new Blob([wavData], { type: 'audio/wav' });
+    const { data, mimeType } = await this.fetchAudio(text);
+    const rawData = this.base64ToArrayBuffer(data);
+    if (this.needsPcmConversion(mimeType)) {
+      const wavData = this.pcmToWav(rawData);
+      return new Blob([wavData], { type: 'audio/wav' });
+    }
+    const blobMime = mimeType.toLowerCase() === 'audio/mp3' ? 'audio/mpeg' : mimeType;
+    return new Blob([rawData], { type: blobMime });
   }
 
   async speakFromBlob(blob: Blob): Promise<void> {
     this.stop();
+    const myRequestId = ++this.requestId;
     const audioData = await blob.arrayBuffer();
+    if (myRequestId !== this.requestId) return;
     try {
       await this.playWithAudioElement(audioData);
     } catch (error) {
       console.warn('[Gemini TTS] Audio element failed, trying AudioContext:', error);
+      if (myRequestId !== this.requestId) return;
       await this.playWithAudioContext(audioData);
     }
   }
 
   stop(): void {
+    this.requestId++;
+    if (this.resolveCurrentPlayback) {
+      this.resolveCurrentPlayback();
+      this.resolveCurrentPlayback = null;
+    }
+    if (this.currentObjectUrl) {
+      URL.revokeObjectURL(this.currentObjectUrl);
+      this.currentObjectUrl = null;
+    }
     if (this.currentAudio) {
       this.currentAudio.pause();
       this.currentAudio.removeAttribute('src');
@@ -150,20 +175,22 @@ export class GeminiTTSService implements ITTSService {
     };
   }
 
-  private extractAudioFromResponse(json: Record<string, unknown>): string {
+  private extractAudioFromResponse(json: Record<string, unknown>): { data: string; mimeType: string } {
     /* eslint-disable @typescript-eslint/no-explicit-any */
     const candidates = (json as any)?.candidates;
     const part = candidates?.[0]?.content?.parts?.[0];
-    const data = part?.inline_data?.data;
+    const inlineData = part?.inline_data;
+    const data = inlineData?.data;
+    const mimeType = inlineData?.mime_type;
     /* eslint-enable @typescript-eslint/no-explicit-any */
 
     if (typeof data !== 'string' || data.length === 0) {
       throw new Error('Gemini TTS response did not contain audio data');
     }
-    return data;
+    return { data, mimeType: typeof mimeType === 'string' ? mimeType : '' };
   }
 
-  private async fetchAudio(text: string): Promise<string> {
+  private async fetchAudio(text: string): Promise<{ data: string; mimeType: string }> {
     // Gemini returns JSON with base64 audio, so use the regular request channel
     const electronProxy = window.electron?.aiProxy;
 
@@ -249,28 +276,46 @@ export class GeminiTTSService implements ITTSService {
     }
   }
 
-  private async playWithAudioElement(audioData: ArrayBuffer): Promise<void> {
+  /** Returns true for raw PCM formats that need a WAV header wrapper. */
+  private needsPcmConversion(mimeType: string): boolean {
+    const lower = mimeType.toLowerCase();
+    if (lower === 'audio/wav' || lower === 'audio/mpeg' || lower === 'audio/mp3') {
+      return false;
+    }
+    // audio/L16, audio/pcm, or unknown → needs WAV wrapping
+    return true;
+  }
+
+  private async playWithAudioElement(audioData: ArrayBuffer, blobType: string = 'audio/wav'): Promise<void> {
     return new Promise((resolve, reject) => {
-      const blob = new Blob([audioData], { type: 'audio/wav' });
+      this.resolveCurrentPlayback = resolve;
+      const blob = new Blob([audioData], { type: blobType });
       const url = URL.createObjectURL(blob);
+      this.currentObjectUrl = url;
       const audio = new Audio(url);
       this.currentAudio = audio;
 
       audio.onended = () => {
         URL.revokeObjectURL(url);
+        this.currentObjectUrl = null;
         this.currentAudio = null;
+        this.resolveCurrentPlayback = null;
         resolve();
       };
 
       audio.onerror = (e) => {
         URL.revokeObjectURL(url);
+        this.currentObjectUrl = null;
         this.currentAudio = null;
+        this.resolveCurrentPlayback = null;
         reject(new Error(`Audio playback error: ${e}`));
       };
 
       audio.play().catch((err) => {
         URL.revokeObjectURL(url);
+        this.currentObjectUrl = null;
         this.currentAudio = null;
+        this.resolveCurrentPlayback = null;
         reject(err);
       });
     });
@@ -284,7 +329,9 @@ export class GeminiTTSService implements ITTSService {
     source.connect(this.audioContext.destination);
 
     return new Promise((resolve, reject) => {
+      this.resolveCurrentPlayback = resolve;
       source.onended = () => {
+        this.resolveCurrentPlayback = null;
         this.audioContext?.close().catch(() => {});
         this.audioContext = null;
         resolve();
@@ -293,6 +340,7 @@ export class GeminiTTSService implements ITTSService {
       try {
         source.start(0);
       } catch (err) {
+        this.resolveCurrentPlayback = null;
         this.audioContext?.close().catch(() => {});
         this.audioContext = null;
         reject(err);

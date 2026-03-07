@@ -107,21 +107,46 @@ export class AICommentaryService implements IAICommentaryService {
       throw new Error('OpenAI API key not configured');
     }
 
+    const requestBody = {
+      model: 'gpt-4o-mini',
+      messages: [
+        { role: 'system', content: 'You are an enthusiastic radio DJ.' },
+        { role: 'user', content: prompt }
+      ],
+      max_tokens: 150,
+      temperature: 0.8
+    };
+
+    const electronProxy = (window as any).electron?.aiProxy;
+
+    if (electronProxy) {
+      // Route through Electron main process (no CORS issues)
+      const result = await electronProxy.request({
+        url: 'https://api.openai.com/v1/chat/completions',
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${this.config.openaiApiKey}`
+        },
+        body: requestBody,
+      });
+
+      if (!result.ok) {
+        throw new Error(`OpenAI API error: ${result.status} ${result.statusText}`);
+      }
+
+      const data = JSON.parse(result.body);
+      return data.choices[0]?.message?.content?.trim() || this.getFallbackCommentary('', '');
+    }
+
+    // Fallback: direct fetch (works in Node/test contexts, will fail in browser due to CORS)
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${this.config.openaiApiKey}`
       },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [
-          { role: 'system', content: 'You are an enthusiastic radio DJ.' },
-          { role: 'user', content: prompt }
-        ],
-        max_tokens: 150,
-        temperature: 0.8
-      })
+      body: JSON.stringify(requestBody)
     });
 
     if (!response.ok) {

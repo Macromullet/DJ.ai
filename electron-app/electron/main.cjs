@@ -345,18 +345,23 @@ ipcMain.handle('open-oauth-window', async (event, { url, redirectUri }) => {
     return;
   }
 
-  oauthWindow = new BrowserWindow({
-    width: 600,
-    height: 800,
-    webPreferences: {
-      nodeIntegration: false,
-      contextIsolation: true
-    },
-    title: 'Sign In - DJ.ai',
-    autoHideMenuBar: true
-  });
+  // Validate redirectUri — must be a non-empty expected callback URL
+  const ALLOWED_REDIRECT_ORIGINS = ['http://localhost', 'djai://oauth'];
+  let redirectOriginValid = false;
+  try {
+    const parsedRedirect = new URL(redirectUri || '');
+    // For http://localhost:PORT/path, origin is http://localhost:PORT
+    // For djai://oauth/callback, check protocol + hostname
+    redirectOriginValid = parsedRedirect.protocol === 'djai:' 
+      ? redirectUri.startsWith('djai://oauth/callback')
+      : parsedRedirect.hostname === 'localhost' && parsedRedirect.protocol === 'http:';
+  } catch { /* invalid URL */ }
+  if (!redirectOriginValid) {
+    console.error('open-oauth-window blocked: invalid redirectUri', redirectUri);
+    return { error: 'Invalid redirect URI' };
+  }
 
-  // Validate the OAuth URL before loading
+  // Validate the OAuth URL before creating window
   const ALLOWED_OAUTH_HOSTS = new Set([
     'accounts.google.com',
     'accounts.spotify.com',
@@ -379,31 +384,34 @@ ipcMain.handle('open-oauth-window', async (event, { url, redirectUri }) => {
     return { error: 'Invalid OAuth URL' };
   }
 
+  oauthWindow = new BrowserWindow({
+    width: 600,
+    height: 800,
+    webPreferences: {
+      nodeIntegration: false,
+      contextIsolation: true
+    },
+    title: 'Sign In - DJ.ai',
+    autoHideMenuBar: true
+  });
+
   oauthWindow.loadURL(url);
 
-  // Monitor navigation for callback
-  const filter = {
-    urls: [redirectUri + '*']
-  };
-
-  oauthWindow.webContents.on('will-redirect', (event) => {
-    const newUrl = event.url;
-    if (newUrl.startsWith(redirectUri)) {
-      event.preventDefault();
-      // Send the callback URL to the main window
+  oauthWindow.webContents.on('will-redirect', (_event, url) => {
+    if (url && url.startsWith(redirectUri)) {
+      _event.preventDefault();
       if (mainWindow) {
-        mainWindow.webContents.send('oauth-deep-link', newUrl);
+        mainWindow.webContents.send('oauth-deep-link', url);
       }
       oauthWindow.close();
     }
   });
 
-  oauthWindow.webContents.on('will-navigate', (event) => {
-    const newUrl = event.url;
-    if (newUrl.startsWith(redirectUri)) {
-      event.preventDefault();
+  oauthWindow.webContents.on('will-navigate', (_event, url) => {
+    if (url && url.startsWith(redirectUri)) {
+      _event.preventDefault();
       if (mainWindow) {
-        mainWindow.webContents.send('oauth-deep-link', newUrl);
+        mainWindow.webContents.send('oauth-deep-link', url);
       }
       oauthWindow.close();
     }
@@ -490,8 +498,16 @@ ipcMain.handle('ai-tts-request', async (event, { url, method, headers, body }) =
       return { ok: false, status: response.status, statusText: response.statusText, body: errorText };
     }
 
-    // Return binary audio as base64
+    // Return binary audio as base64 (with size limit to prevent OOM)
+    const contentLength = parseInt(response.headers.get('content-length') || '0', 10);
+    const MAX_TTS_BYTES = 10 * 1024 * 1024; // 10 MB
+    if (contentLength > MAX_TTS_BYTES) {
+      return { ok: false, status: 413, statusText: 'TTS response too large', body: null };
+    }
     const buffer = await response.arrayBuffer();
+    if (buffer.byteLength > MAX_TTS_BYTES) {
+      return { ok: false, status: 413, statusText: 'TTS response too large', body: null };
+    }
     const base64 = Buffer.from(buffer).toString('base64');
     return { ok: true, status: response.status, statusText: response.statusText, body: base64 };
   } catch (error) {
@@ -558,19 +574,30 @@ ipcMain.handle('safe-storage-decrypt', (event, encrypted) => {
 app.whenReady().then(() => {
   const { session } = require('electron');
   session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+    // Only apply CSP to the main app window — skip third-party origins
+    // (YouTube Music, Google OAuth, Spotify OAuth need their own scripts)
+    try {
+      const url = new URL(details.url);
+      const isMainApp = url.hostname === 'localhost' || url.protocol === 'file:';
+      if (!isMainApp) {
+        callback({ responseHeaders: details.responseHeaders });
+        return;
+      }
+    } catch {
+      callback({ responseHeaders: details.responseHeaders });
+      return;
+    }
+
     callback({
       responseHeaders: {
         ...details.responseHeaders,
         'Content-Security-Policy': [
           "default-src 'self'; " +
-          // 'unsafe-inline' is required for Vite HMR script injection in development
-          // and for inline event handlers used by YouTube embeds. TODO: Replace with
-          // nonce-based CSP once Vite supports nonce injection for HMR scripts.
           "script-src 'self' 'unsafe-inline' https://www.youtube.com https://s.ytimg.com https://sdk.scdn.co https://apisdk.scdn.co https://js-cdn.music.apple.com; " +
           "style-src 'self' 'unsafe-inline'; " +
           "img-src 'self' data: https: http:; " +
           "media-src 'self' https:; " +
-          "connect-src 'self' http://localhost:* https://*.azurewebsites.net https://*.azurestaticapps.net https://api.openai.com https://api.anthropic.com https://www.googleapis.com https://accounts.google.com https://api.spotify.com https://accounts.spotify.com https://apisdk.scdn.co https://api.music.apple.com https://authorize.music.apple.com; " +
+          "connect-src 'self' http://localhost:* https://*.azurewebsites.net https://*.azurestaticapps.net https://api.openai.com https://api.anthropic.com https://www.googleapis.com https://generativelanguage.googleapis.com https://accounts.google.com https://api.spotify.com https://accounts.spotify.com https://apisdk.scdn.co https://api.music.apple.com https://authorize.music.apple.com https://api.elevenlabs.io; " +
           "frame-src https://www.youtube.com https://music.youtube.com;"
         ]
       }

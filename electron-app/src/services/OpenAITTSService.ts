@@ -22,6 +22,9 @@ export class OpenAITTSService implements ITTSService {
   private speed: number = 1.0;
   private currentAudio: HTMLAudioElement | null = null;
   private audioContext: AudioContext | null = null;
+  private requestId: number = 0;
+  private currentObjectUrl: string | null = null;
+  private resolveCurrentPlayback: (() => void) | null = null;
 
   constructor(config: OpenAITTSConfig) {
     this.apiKey = config.apiKey;
@@ -30,15 +33,19 @@ export class OpenAITTSService implements ITTSService {
 
   async speak(text: string): Promise<void> {
     this.stop();
+    const myRequestId = ++this.requestId;
 
     const base64Audio = await this.fetchAudio(text);
     const audioData = this.base64ToArrayBuffer(base64Audio);
+
+    if (myRequestId !== this.requestId) return;
 
     // Try AudioContext first for better control, fall back to Audio element
     try {
       await this.playWithAudioElement(audioData);
     } catch (error) {
       console.warn('[OpenAI TTS] Audio element failed, trying AudioContext:', error);
+      if (myRequestId !== this.requestId) return;
       await this.playWithAudioContext(audioData);
     }
   }
@@ -51,16 +58,28 @@ export class OpenAITTSService implements ITTSService {
 
   async speakFromBlob(blob: Blob): Promise<void> {
     this.stop();
+    const myRequestId = ++this.requestId;
     const audioData = await blob.arrayBuffer();
+    if (myRequestId !== this.requestId) return;
     try {
       await this.playWithAudioElement(audioData);
     } catch (error) {
       console.warn('[OpenAI TTS] Audio element failed, trying AudioContext:', error);
+      if (myRequestId !== this.requestId) return;
       await this.playWithAudioContext(audioData);
     }
   }
 
   stop(): void {
+    this.requestId++;
+    if (this.resolveCurrentPlayback) {
+      this.resolveCurrentPlayback();
+      this.resolveCurrentPlayback = null;
+    }
+    if (this.currentObjectUrl) {
+      URL.revokeObjectURL(this.currentObjectUrl);
+      this.currentObjectUrl = null;
+    }
     if (this.currentAudio) {
       this.currentAudio.pause();
       this.currentAudio.removeAttribute('src');
@@ -157,26 +176,34 @@ export class OpenAITTSService implements ITTSService {
 
   private async playWithAudioElement(audioData: ArrayBuffer): Promise<void> {
     return new Promise((resolve, reject) => {
+      this.resolveCurrentPlayback = resolve;
       const blob = new Blob([audioData], { type: 'audio/mpeg' });
       const url = URL.createObjectURL(blob);
+      this.currentObjectUrl = url;
       const audio = new Audio(url);
       this.currentAudio = audio;
 
       audio.onended = () => {
         URL.revokeObjectURL(url);
+        this.currentObjectUrl = null;
         this.currentAudio = null;
+        this.resolveCurrentPlayback = null;
         resolve();
       };
 
       audio.onerror = (e) => {
         URL.revokeObjectURL(url);
+        this.currentObjectUrl = null;
         this.currentAudio = null;
+        this.resolveCurrentPlayback = null;
         reject(new Error(`Audio playback error: ${e}`));
       };
 
       audio.play().catch((err) => {
         URL.revokeObjectURL(url);
+        this.currentObjectUrl = null;
         this.currentAudio = null;
+        this.resolveCurrentPlayback = null;
         reject(err);
       });
     });
@@ -190,7 +217,9 @@ export class OpenAITTSService implements ITTSService {
     source.connect(this.audioContext.destination);
 
     return new Promise((resolve, reject) => {
+      this.resolveCurrentPlayback = resolve;
       source.onended = () => {
+        this.resolveCurrentPlayback = null;
         this.audioContext?.close().catch(() => {});
         this.audioContext = null;
         resolve();
@@ -199,6 +228,7 @@ export class OpenAITTSService implements ITTSService {
       try {
         source.start(0);
       } catch (err) {
+        this.resolveCurrentPlayback = null;
         this.audioContext?.close().catch(() => {});
         this.audioContext = null;
         reject(err);

@@ -5,8 +5,6 @@ var redis = builder.AddRedis("cache")
     .WithRedisInsight();
 
 // Read OAuth secrets from Aspire configuration (includes dotnet user-secrets)
-var googleClientId = builder.Configuration["GoogleClientId"];
-var googleClientSecret = builder.Configuration["GoogleClientSecret"];
 var spotifyClientId = builder.Configuration["SpotifyClientId"];
 var spotifyClientSecret = builder.Configuration["SpotifyClientSecret"];
 var appleMusicTeamId = builder.Configuration["AppleMusicTeamId"];
@@ -17,8 +15,6 @@ var appleMusicPrivateKey = builder.Configuration["AppleMusicPrivateKey"];
 var oauthProxy = builder.AddAzureFunctionsProject<Projects.DJai_OAuthProxy>("oauth-proxy")
     .WithReference(redis)
     .WithExternalHttpEndpoints()
-    .WithEnvironment("GoogleClientId", googleClientId)
-    .WithEnvironment("GoogleClientSecret", googleClientSecret)
     .WithEnvironment("SpotifyClientId", spotifyClientId)
     .WithEnvironment("SpotifyClientSecret", spotifyClientSecret)
     .WithEnvironment("AppleMusicTeamId", appleMusicTeamId)

@@ -61,7 +61,7 @@ Compress all branch commits into a single, well-described commit on `main`:
 feat: add onboarding wizard with provider selection
 
 - Three-step wizard: welcome, provider selection, completion
-- OAuth integration for YouTube, Spotify, Apple Music
+- OAuth integration for Spotify and Apple Music
 - Responsive layout with design token styling
 - Keyboard accessible with focus management
 

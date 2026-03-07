@@ -88,7 +88,7 @@ DJ.ai also sends an `X-Device-Token` header to the OAuth proxy for rate limiting
 
 ## DJ.ai Connection
 
-The Music User Token enables DJ.ai's personalization features — recommendations, library browsing, and listening history. Because MusicKit JS manages the token lifecycle, `AppleMusicProvider.ts` doesn't need the complex refresh logic that `SpotifyProvider.ts` and `YouTubeMusicProvider.ts` implement. This simplicity is a key advantage of the MusicKit approach.
+The Music User Token enables DJ.ai's personalization features — recommendations, library browsing, and listening history. Because MusicKit JS manages the token lifecycle, `AppleMusicProvider.ts` doesn't need the complex refresh logic that `SpotifyProvider.ts` implements. This simplicity is a key advantage of the MusicKit approach.
 
 ## Further Reading
 

@@ -43,7 +43,7 @@ const code_challenge = base64url(sha256(code_verifier));
 - **Device token** rate limiting to prevent brute-force code guessing (`oauth-proxy/Services/RedisDeviceAuthService.cs`)
 - **Backend proxy** pattern where the client secret adds an additional verification layer
 
-**Why PKCE should be added**: As a desktop app (public client), DJ.ai would benefit from PKCE as defense-in-depth. Even though the backend proxy holds the client secret, PKCE protects against code interception at the OS level (malicious apps claiming the same custom URI scheme). Spotify and Google both support PKCE.
+**Why PKCE should be added**: As a desktop app (public client), DJ.ai would benefit from PKCE as defense-in-depth. Even though the backend proxy holds the client secret, PKCE protects against code interception at the OS level (malicious apps claiming the same custom URI scheme). Spotify supports PKCE.
 
 **Where it would go**:
 - `electron-app/src/providers/SpotifyProvider.ts` — generate `code_verifier`, send `code_challenge` with initiate request

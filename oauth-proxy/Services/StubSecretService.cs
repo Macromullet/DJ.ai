@@ -12,10 +12,6 @@ public class StubSecretService : ISecretService
 {
     private readonly Dictionary<string, string> _stubSecrets = new()
     {
-        // Stub Google OAuth credentials
-        ["GoogleClientId"] = "stub-google-client-id.apps.googleusercontent.com",
-        ["GoogleClientSecret"] = "STUB-Google-Client-Secret-12345",
-        
         // Stub Spotify OAuth credentials
         ["SpotifyClientId"] = "stub-spotify-client-id-abc123",
         ["SpotifyClientSecret"] = "STUB-Spotify-Client-Secret-67890",

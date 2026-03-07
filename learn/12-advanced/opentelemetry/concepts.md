@@ -6,10 +6,10 @@ A **trace** represents a single request's journey through a system. It's compose
 
 ```
 Trace: OAuth Token Exchange
-├── Span: HTTP POST /oauth/youtube/exchange (250ms)
+├── Span: HTTP POST /oauth/spotify/exchange (250ms)
 │   ├── Span: Validate device token (5ms)
 │   ├── Span: Read client secret from Key Vault (45ms)
-│   ├── Span: Exchange code at Google OAuth endpoint (180ms)
+│   ├── Span: Exchange code at Spotify OAuth endpoint (180ms)
 │   └── Span: Store token state in Redis (15ms)
 ```
 
@@ -17,7 +17,7 @@ Each span records:
 - **Name** — What operation occurred
 - **Start/End time** — How long it took
 - **Status** — Success, error, or unset
-- **Attributes** — Key-value metadata (`http.method: POST`, `provider: youtube`)
+- **Attributes** — Key-value metadata (`http.method: POST`, `provider: spotify`)
 - **Parent span ID** — Links child spans to their parent
 
 ### Context Propagation
@@ -41,11 +41,11 @@ Metrics are **aggregate measurements** collected over time. Unlike traces (per-r
 ```csharp
 // Counter example
 var requestCounter = meter.CreateCounter<long>("oauth.requests");
-requestCounter.Add(1, new("provider", "youtube"), new("operation", "exchange"));
+requestCounter.Add(1, new("provider", "spotify"), new("operation", "exchange"));
 
 // Histogram example
 var latencyHistogram = meter.CreateHistogram<double>("oauth.latency");
-latencyHistogram.Record(elapsed.TotalMilliseconds, new("provider", "youtube"));
+latencyHistogram.Record(elapsed.TotalMilliseconds, new("provider", "spotify"));
 ```
 
 ## Baggage

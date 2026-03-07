@@ -75,7 +75,7 @@ DJ.ai uses literal types extensively for provider IDs and configuration options:
 
 ```typescript
 // From IMusicProvider.ts — providerId is a union of string literals
-readonly providerId: 'youtube' | 'spotify' | 'apple';
+readonly providerId: 'spotify' | 'apple';
 
 // From Settings — TTS provider selection
 ttsProvider: 'web-speech' | 'openai' | 'gemini' | 'elevenlabs';
@@ -97,7 +97,7 @@ ttsProvider: 'web-speech' | 'openai' | 'gemini' | 'elevenlabs';
 - TypeScript uses **structural typing** — shape matters, not name
 - **Type inference** reduces boilerplate; let the compiler work for you
 - **Narrowing** (typeof, truthiness, discriminated unions) refines types in branches
-- **Literal union types** like `'youtube' | 'spotify' | 'apple'` constrain values at compile time
+- **Literal union types** like `'spotify' | 'apple'` constrain values at compile time
 - Run `npx tsc --noEmit` to type-check DJ.ai without emitting JavaScript
 
 ---

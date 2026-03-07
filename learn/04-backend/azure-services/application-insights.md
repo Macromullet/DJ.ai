@@ -70,7 +70,7 @@ A single OAuth flow generates a trace that spans multiple services:
 Client Request → Functions Host → Your Function
                                     ├── Key Vault GET (secret)
                                     ├── Redis SET (state)
-                                    └── HTTP POST (Google OAuth)
+                                    └── HTTP POST (Spotify OAuth)
 ```
 
 Application Insights correlates all these operations with a single trace ID, making it easy to debug failures.

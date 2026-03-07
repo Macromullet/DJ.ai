@@ -28,8 +28,6 @@ The project file must declare a `<UserSecretsId>`:
 
 ```bash
 cd oauth-proxy
-dotnet user-secrets set "Google:ClientId" "123456789.apps.googleusercontent.com"
-dotnet user-secrets set "Google:ClientSecret" "GOCSPX-..."
 dotnet user-secrets set "Spotify:ClientId" "abc123..."
 dotnet user-secrets set "Spotify:ClientSecret" "def456..."
 ```
@@ -41,8 +39,8 @@ dotnet user-secrets set "Spotify:ClientSecret" "def456..."
 builder.Configuration.AddUserSecrets<Program>();
 
 // Secrets are available via IConfiguration:
-var clientId = configuration["Google:ClientId"];
-var clientSecret = configuration["Google:ClientSecret"];
+var clientId = configuration["Spotify:ClientId"];
+var clientSecret = configuration["Spotify:ClientSecret"];
 ```
 
 ## DJ.ai Implementation
@@ -60,8 +58,6 @@ The interactive setup script prompts for:
 
 | Secret Key | Description |
 |------------|-------------|
-| `Google:ClientId` | YouTube/Google OAuth client ID |
-| `Google:ClientSecret` | YouTube/Google OAuth client secret |
 | `Spotify:ClientId` | Spotify OAuth client ID |
 | `Spotify:ClientSecret` | Spotify OAuth client secret |
 | `AppleMusic:TeamId` | Apple Developer Team ID |

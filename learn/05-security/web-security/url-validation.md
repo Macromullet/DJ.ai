@@ -76,7 +76,6 @@ DJ.ai extracted all URL validation into a pure function module:
 | `electron-app/electron/validation.cjs` | `isAllowedOAuthHost()` — validates OAuth provider URLs |
 | `electron-app/electron/validation.cjs` | `isValidRedirectUri()` — validates OAuth redirect URIs |
 | `electron-app/electron/validation.cjs` | `isAllowedExternalProtocol()` — validates shell.openExternal URLs |
-| `electron-app/electron/validation.cjs` | `isValidYouTubeMusicUrl()` — validates YouTube Music embed URLs |
 | `electron-app/electron/__tests__/validation.test.ts` | Tests covering bypass attempts |
 
 ### Design Principles

@@ -6,7 +6,7 @@ OAuth-only middle tier for DJ.ai. Handles token initiation, exchange, and refres
 
 ## Features
 
-- ✅ YouTube Music, Spotify, and Apple Music OAuth (all fully implemented)
+- ✅ Spotify and Apple Music OAuth (all fully implemented)
 - ✅ Apple Music ES256 JWT signing (developer tokens)
 - ✅ Azure Key Vault for client secrets (Managed Identity in production)
 - ✅ Redis distributed state: state tokens, device registry, rate limiting
@@ -20,7 +20,6 @@ OAuth-only middle tier for DJ.ai. Handles token initiation, exchange, and refres
 ```
 oauth-proxy/
 ├── Functions/
-│   ├── YouTubeOAuthFunctions.cs    # /initiate, /exchange, /refresh
 │   ├── SpotifyOAuthFunctions.cs    # /initiate, /exchange, /refresh
 │   ├── AppleMusicOAuthFunctions.cs # /initiate, /developer-token, /validate
 │   └── HealthCheckFunction.cs      # /health
@@ -42,23 +41,6 @@ oauth-proxy/
 ```
 
 ## API Endpoints
-
-### YouTube Music
-
-**POST** `/api/oauth/youtube/initiate`
-- Headers: `X-Device-Token: <guid>`
-- Body: `{ "redirectUri": "http://localhost:5173/oauth/callback" }`
-- Returns: `{ "authUrl": "https://...", "state": "..." }`
-
-**POST** `/api/oauth/youtube/exchange`
-- Headers: `X-Device-Token: <guid>`
-- Body: `{ "code": "...", "state": "..." }`
-- Returns: `{ "accessToken": "...", "refreshToken": "...", "expiresIn": 3600 }`
-
-**POST** `/api/oauth/youtube/refresh`
-- Headers: `X-Device-Token: <guid>`
-- Body: `{ "refreshToken": "..." }`
-- Returns: `{ "accessToken": "...", "refreshToken": "...", "expiresIn": 3600 }`
 
 ### Spotify
 
@@ -142,17 +124,17 @@ func start --port 7071
 ### Testing with curl
 
 ```bash
-# Initiate OAuth flow
-curl -X POST http://localhost:7071/api/oauth/youtube/initiate \
+# Initiate OAuth flow (Spotify example)
+curl -X POST http://localhost:7071/api/oauth/spotify/initiate \
   -H "X-Device-Token: 12345678-1234-1234-1234-123456789abc" \
   -H "Content-Type: application/json" \
   -d '{"redirectUri": "http://localhost:5173/oauth/callback"}'
 
 # Exchange code for tokens
-curl -X POST http://localhost:7071/api/oauth/youtube/exchange \
+curl -X POST http://localhost:7071/api/oauth/spotify/exchange \
   -H "X-Device-Token: 12345678-1234-1234-1234-123456789abc" \
   -H "Content-Type: application/json" \
-  -d '{"code": "4/...", "state": "..."}'
+  -d '{"code": "AQD...", "state": "..."}'
 
 # Health check
 curl http://localhost:7071/api/health
@@ -190,7 +172,6 @@ CI/CD is handled by GitHub Actions (`.github/workflows/deploy-oauth-proxy.yml`).
 ## Environment Variables
 
 ### Local Development (`local.settings.json`)
-- `GoogleClientId` / `GoogleClientSecret`
 - `SpotifyClientId` / `SpotifyClientSecret`
 - `AppleTeamId` / `AppleKeyId` / `ApplePrivateKey`
 - `Redis__ConnectionString`

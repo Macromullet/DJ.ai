@@ -45,4 +45,4 @@ IPC is how Electron's processes talk to each other. Since the main process and r
 
 ## DJ.ai Connection
 
-DJ.ai uses all three IPC patterns extensively. The `invoke`/`handle` pattern powers the majority of features — AI requests, safe storage, YouTube playback, and OAuth window creation all use this async request-response model. The `send`/`on` pattern handles system tray events (play/pause/next/previous) which flow from the main process to the renderer. Binary data transfer is used for TTS audio, where the main process fetches audio from AI APIs and returns base64-encoded data to the renderer for playback.
+DJ.ai uses all three IPC patterns extensively. The `invoke`/`handle` pattern powers the majority of features — AI requests, safe storage, and OAuth window creation all use this async request-response model. The `send`/`on` pattern handles system tray events (play/pause/next/previous) which flow from the main process to the renderer. Binary data transfer is used for TTS audio, where the main process fetches audio from AI APIs and returns base64-encoded data to the renderer for playback.

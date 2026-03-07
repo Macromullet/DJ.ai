@@ -7,7 +7,7 @@
 ```typescript
 // ❌ Hard-coded dependency (tightly coupled)
 class MusicPlayer {
-  private provider = new YouTubeMusicProvider();
+  private provider = new SpotifyProvider();
 }
 
 // ✅ Injected dependency (loosely coupled)
@@ -49,7 +49,7 @@ When `?test=true` is in the URL, the container injects mock implementations:
 ```typescript
 const musicProvider = isTestMode
   ? new MockMusicProvider()
-  : new YouTubeMusicProvider(config);
+  : new SpotifyProvider(config);
 ```
 
 ## DI in DJ.ai's Backend (C#)
@@ -72,20 +72,20 @@ var host = new HostBuilder()
 Functions receive dependencies via constructor injection:
 
 ```csharp
-public class YouTubeOAuthFunctions
+public class SpotifyOAuthFunctions
 {
     private readonly ISecretService _secretService;
 
-    public YouTubeOAuthFunctions(ISecretService secretService)
+    public SpotifyOAuthFunctions(ISecretService secretService)
     {
         _secretService = secretService;  // Injected by container
     }
 
-    [Function("youtube-oauth-initiate")]
+    [Function("spotify-oauth-initiate")]
     public async Task<HttpResponseData> Initiate(
         [HttpTrigger(AuthorizationLevel.Anonymous, "get")] HttpRequestData req)
     {
-        var clientSecret = await _secretService.GetSecretAsync("YouTube-ClientSecret");
+        var clientSecret = await _secretService.GetSecretAsync("Spotify-ClientSecret");
         // ...
     }
 }

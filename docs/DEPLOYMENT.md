@@ -78,9 +78,9 @@ This will:
 
 ### Manual Alternative
 ```bash
-az keyvault secret set --vault-name <your-kv> --name GoogleClientId --value "<value>"
-az keyvault secret set --vault-name <your-kv> --name GoogleClientSecret --value "<value>"
-# ... repeat for Spotify and Apple Music secrets
+az keyvault secret set --vault-name <your-kv> --name SpotifyClientId --value "<value>"
+az keyvault secret set --vault-name <your-kv> --name SpotifyClientSecret --value "<value>"
+# ... repeat for Apple Music secrets
 ```
 
 ### GitHub Secrets (for CI/CD)
@@ -114,17 +114,12 @@ For signed Electron releases:
 
 ## OAuth App Registration
 
-### Google (YouTube Music)
-1. [Google Cloud Console](https://console.cloud.google.com/apis/credentials) → Create OAuth 2.0 Client ID
-2. Enable **YouTube Data API v3**
-3. Add redirect URIs:
+### Spotify
+1. [Spotify Dashboard](https://developer.spotify.com/dashboard) → Create app
+2. Add redirect URIs:
    - `http://localhost:5173/oauth/callback` (dev)
    - `djai://oauth/callback` (Electron packaged)
    - `https://your-domain/oauth/callback` (production web)
-
-### Spotify
-1. [Spotify Dashboard](https://developer.spotify.com/dashboard) → Create app
-2. Add redirect URIs (same pattern as above)
 
 ### Apple Music
 1. Requires [Apple Developer Account](https://developer.apple.com) ($99/year)

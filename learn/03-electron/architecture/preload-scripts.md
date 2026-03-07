@@ -37,10 +37,9 @@ contextBridge.exposeInMainWorld('ipc', ipcRenderer);
 
 // ✅ SAFE: exposes only specific operations
 contextBridge.exposeInMainWorld('electron', {
-  ytMusic: {
-    playUrl: (url) => ipcRenderer.invoke('yt-music-play-url', url),
-    control: (action) => ipcRenderer.invoke('yt-music-control', action),
-    getTrack: () => ipcRenderer.invoke('yt-music-get-track')
+  aiProxy: {
+    request: (options) => ipcRenderer.invoke('ai-api-request', options),
+    ttsRequest: (options) => ipcRenderer.invoke('ai-tts-request', options),
   }
 });
 ```
@@ -76,4 +75,4 @@ The returned cleanup function enables React components to unsubscribe in `useEff
 
 ## DJ.ai Connection
 
-DJ.ai's preload script (`electron-app/electron/preload.cjs`) exposes the `window.electron` object with six namespaces: `ytMusic` (playback), `oauthDeepLink` (OAuth callbacks), `aiProxy` (AI commentary and TTS), `safeStorage` (encryption), `notifications` (desktop alerts), and `tray` (system tray events). Each namespace wraps specific IPC channels — the React app at `electron-app/src/` interacts with these as simple async function calls, never knowing about the IPC layer underneath.
+DJ.ai's preload script (`electron-app/electron/preload.cjs`) exposes the `window.electron` object with five namespaces: `oauthDeepLink` (OAuth callbacks), `aiProxy` (AI commentary and TTS), `safeStorage` (encryption), `notifications` (desktop alerts), and `tray` (system tray events). Each namespace wraps specific IPC channels — the React app at `electron-app/src/` interacts with these as simple async function calls, never knowing about the IPC layer underneath.

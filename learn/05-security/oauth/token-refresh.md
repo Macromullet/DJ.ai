@@ -35,9 +35,8 @@ Refresh Token: Long-lived (days/months), used ONLY to get new access tokens
 | File | Role |
 |------|------|
 | `oauth-proxy/Functions/SpotifyOAuthFunctions.cs` | `/refresh` endpoint — adds client secret, calls provider's token endpoint |
-| `oauth-proxy/Functions/YouTubeOAuthFunctions.cs` | Same refresh pattern for Google/YouTube tokens |
 | `electron-app/src/providers/SpotifyProvider.ts` | Checks token expiry, calls `/refresh` proactively before API requests |
-| `electron-app/src/providers/YouTubeMusicProvider.ts` | Token expiry checking and refresh logic |
+| `electron-app/src/providers/AppleMusicProvider.ts` | Token expiry checking and refresh logic |
 | `oauth-proxy/Models/OAuthModels.cs` | `OAuthRefreshRequest` DTO with refresh_token field |
 
 ### Token Lifecycle in DJ.ai

@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-DJ.ai is an AI-powered music DJ application providing intelligent commentary and recommendations across multiple streaming platforms (YouTube Music, Spotify, Apple Music). Built as an Electron app with React frontend and .NET Azure Functions backend, orchestrated locally by .NET Aspire.
+DJ.ai is an AI-powered music DJ application providing intelligent commentary and recommendations across multiple streaming platforms (Spotify, Apple Music). Built as an Electron app with React frontend and .NET Azure Functions backend, orchestrated locally by .NET Aspire.
 
 **Key Architecture:** OAuth-only middle tier pattern - the Azure Functions backend handles ONLY OAuth token exchange (not API proxying). All music API calls go directly from the Electron app to music providers using OAuth tokens.
 
@@ -166,7 +166,6 @@ dotnet run                     # Start all services via Aspire
 - Device token authentication + rate limiting
 
 **Music Providers:**
-- YouTube Data API (fully implemented)
 - Spotify Web API (architecture ready)
 - Apple Music API (planned)
 
@@ -177,7 +176,6 @@ electron-app/src/
 ├── components/         # React components (App, Settings, OnboardingWizard, etc.)
 │   └── onboarding/     # Onboarding wizard step components
 ├── providers/          # IMusicProvider implementations
-│   ├── YouTubeMusicProvider.ts   # ✅ Fully working
 │   ├── SpotifyProvider.ts        # ⏸️ Architecture ready
 │   └── AppleMusicProvider.ts     # ⏸️ Planned
 ├── services/           # AI commentary, TTS
@@ -370,4 +368,4 @@ npm run test:failures      # Print only failures with source context
 ✅ **Working:** Apple Music provider (default), OAuth flow, Dev environment, Aspire orchestration, CI/CD pipelines, Onboarding wizard, Design token system, AI DJ commentary, Multi-provider TTS, Auto-DJ with look-ahead, Keyboard shortcuts, System tray, Toast/desktop notifications
 🧪 **Testing:** Vitest unit/integration tests, xUnit backend tests, Playwright E2E, feedback loop scripts
 🚧 **In Progress:** Spotify provider
-📋 **Planned:** GPU visualizations, Playlists, YouTube Music (audio-only rewrite)
+📋 **Planned:** GPU visualizations, Playlists

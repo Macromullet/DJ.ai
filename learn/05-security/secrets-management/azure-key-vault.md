@@ -26,8 +26,6 @@ builder.Configuration.AddAzureKeyVault(
 
 | Secret Name | Purpose |
 |-------------|---------|
-| `Google--ClientId` | YouTube/Google OAuth client ID |
-| `Google--ClientSecret` | YouTube/Google OAuth client secret |
 | `Spotify--ClientId` | Spotify OAuth client ID |
 | `Spotify--ClientSecret` | Spotify OAuth client secret |
 | `AppleMusic--TeamId` | Apple Developer Team ID |
@@ -51,7 +49,7 @@ builder.Configuration.AddAzureKeyVault(
 1. Reads azd environment to find Key Vault name
 2. Authenticates via Azure CLI (az login)
 3. Prompts for each secret value
-4. Runs: az keyvault secret set --vault-name $vault --name "Google--ClientId" --value "..."
+4. Runs: az keyvault secret set --vault-name $vault --name "Spotify--ClientId" --value "..."
 5. Verifies all secrets are set
 ```
 

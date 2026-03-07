@@ -94,7 +94,7 @@ DJ.ai requests these scopes:
 
 ## DJ.ai Connection
 
-Spotify's OAuth implementation in DJ.ai exemplifies the "OAuth-only middle tier" pattern: the backend handles three endpoints (initiate, exchange, refresh) and nothing more. All actual Spotify API calls go directly from `SpotifyProvider.ts` to `api.spotify.com`. The `SpotifyOAuthFunctions.cs` patterns are reused by YouTube and could be templated for any future OAuth 2.0 provider.
+Spotify's OAuth implementation in DJ.ai exemplifies the "OAuth-only middle tier" pattern: the backend handles three endpoints (initiate, exchange, refresh) and nothing more. All actual Spotify API calls go directly from `SpotifyProvider.ts` to `api.spotify.com`. The `SpotifyOAuthFunctions.cs` patterns could be templated for any future OAuth 2.0 provider.
 
 ## Further Reading
 

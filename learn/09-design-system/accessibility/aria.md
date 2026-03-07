@@ -75,7 +75,7 @@ Native `<input type="range">` has accessibility built in, but custom slider impl
   Disconnect
 </button>
 <span id="disconnect-help" className="sr-only">
-  Removes your YouTube Music connection. You can reconnect anytime.
+  Removes your Spotify connection. You can reconnect anytime.
 </span>
 ```
 

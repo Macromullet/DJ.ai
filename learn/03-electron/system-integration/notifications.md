@@ -60,7 +60,7 @@ await window.electron.notifications.show({
 |-------|---------------------|
 | Track change | Song title, artist, album art |
 | DJ commentary | AI-generated comment text |
-| Provider connected | "Connected to YouTube Music" |
+| Provider connected | "Connected to Spotify" |
 | Error | "Playback failed — check connection" |
 
 ## Platform Behavior

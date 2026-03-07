@@ -11,10 +11,9 @@ DJ.ai is an AI-powered music application that provides DJ-style commentary and r
 │                     User (Electron App)                      │
 │  ┌─────────────┐  ┌──────────────┐  ┌──────────────────┐   │
 │  │   UI/UX     │  │  AI Services │  │  Music Providers │   │
-│  │  (React)    │  │  Commentary  │  │  · YouTube Music │   │
-│  │             │  │     TTS      │  │  · Spotify       │   │
-│  └─────────────┘  └──────────────┘  │  · Apple Music   │   │
-│                                      └──────────────────┘   │
+│  │  (React)    │  │  Commentary  │  │  · Spotify       │   │
+│  │             │  │     TTS      │  │  · Apple Music   │   │
+│  └─────────────┘  └──────────────┘  └──────────────────┘   │
 └────────────────────────┬────────────────────────────────────┘
                          │
           ┌──────────────┼──────────────┐
@@ -24,9 +23,8 @@ DJ.ai is an AI-powered music application that provides DJ-style commentary and r
   │ OAuth Proxy  │  │GitHub   │  │Music Provider│
   │ (Azure Func) │  │Copilot  │  │    APIs      │
   │              │  │  API    │  │              │
-  │ ┌──────────┐ │  └─────────┘  │- YouTube     │
-  │ │Key Vault │ │               │- Spotify     │
-  │ │(Secrets) │ │               │- Apple Music │
+  │ ┌──────────┐ │  └─────────┘  │- Spotify     │
+  │ │Key Vault │ │               │- Apple Music │
   │ └──────────┘ │               └──────────────┘
   │ ┌──────────┐ │
   │ │  Redis   │ │
@@ -138,7 +136,6 @@ interface IMusicProvider {
 ```
 
 **Providers:**
-- ✅ **YouTubeMusicProvider** — Fully implemented
 - ✅ **SpotifyProvider** — Wired up
 - ✅ **AppleMusicProvider** — Wired up
 
@@ -159,12 +156,10 @@ The Electron main process (`electron/main.cjs`) implements several security hard
 electron-app/
 ├── electron/
 │   ├── main.cjs              # Electron main process
-│   ├── preload.cjs           # Preload script (IPC bridge)
-│   └── ytmusic-preload.cjs   # YouTube Music webview preload
+│   └── preload.cjs           # Preload script (IPC bridge)
 ├── src/
 │   ├── components/           # React components
 │   ├── providers/            # IMusicProvider implementations
-│   │   ├── YouTubeMusicProvider.ts
 │   │   ├── SpotifyProvider.ts
 │   │   ├── AppleMusicProvider.ts
 │   │   └── MockMusicProvider.ts
@@ -273,6 +268,5 @@ User Machine
 - [OAuth 2.0 Specification](https://oauth.net/2/)
 - [.NET Aspire](https://learn.microsoft.com/dotnet/aspire/)
 - [Azure Functions .NET Isolated](https://learn.microsoft.com/azure/azure-functions/dotnet-isolated-process-guide)
-- [YouTube Data API](https://developers.google.com/youtube/v3)
 - [Spotify Web API](https://developer.spotify.com/documentation/web-api)
 - [Apple Music API](https://developer.apple.com/documentation/applemusicapi)

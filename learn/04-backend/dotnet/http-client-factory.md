@@ -9,7 +9,7 @@ Creating `new HttpClient()` for each request seems harmless, but it causes a ser
 public async Task<string> ExchangeToken(string code)
 {
     using var client = new HttpClient();  // New socket each time!
-    var response = await client.PostAsync("https://oauth2.googleapis.com/token", content);
+    var response = await client.PostAsync("https://accounts.spotify.com/api/token", content);
     return await response.Content.ReadAsStringAsync();
 }
 ```
@@ -23,11 +23,11 @@ public async Task<string> ExchangeToken(string code)
 services.AddHttpClient();
 
 // Inject and use
-public class YouTubeOAuthFunctions
+public class SpotifyOAuthFunctions
 {
     private readonly IHttpClientFactory _httpClientFactory;
 
-    public YouTubeOAuthFunctions(IHttpClientFactory httpClientFactory)
+    public SpotifyOAuthFunctions(IHttpClientFactory httpClientFactory)
     {
         _httpClientFactory = httpClientFactory;
     }
@@ -36,7 +36,7 @@ public class YouTubeOAuthFunctions
     {
         var client = _httpClientFactory.CreateClient();  // Pooled handler!
         var response = await client.PostAsync(
-            "https://oauth2.googleapis.com/token", content);
+            "https://accounts.spotify.com/api/token", content);
         return await response.Content.ReadAsJsonAsync<TokenResponse>();
     }
 }
@@ -48,15 +48,15 @@ For more control, register named clients with pre-configured settings:
 
 ```csharp
 // Named client with specific configuration
-services.AddHttpClient("google", client =>
+services.AddHttpClient("spotify", client =>
 {
-    client.BaseAddress = new Uri("https://oauth2.googleapis.com/");
+    client.BaseAddress = new Uri("https://accounts.spotify.com/");
     client.DefaultRequestHeaders.Add("Accept", "application/json");
 });
 
 // Usage
-var client = _httpClientFactory.CreateClient("google");
-var response = await client.PostAsync("token", content);
+var client = _httpClientFactory.CreateClient("spotify");
+var response = await client.PostAsync("api/token", content);
 ```
 
 ## Resilience with Aspire
@@ -88,4 +88,4 @@ This automatically adds retry logic, circuit breakers, and timeouts to every `Ht
 
 ## DJ.ai Connection
 
-DJ.ai registers `IHttpClientFactory` in `oauth-proxy/Program.cs` with `services.AddHttpClient()`. The OAuth functions use it for token exchange calls to Google (`https://oauth2.googleapis.com/token`), Spotify (`https://accounts.spotify.com/api/token`), and Apple Music token validation. The `DJai.ServiceDefaults` project adds standard resilience policies, ensuring that transient failures (network blips, provider rate limits) are automatically retried with exponential backoff.
+DJ.ai registers `IHttpClientFactory` in `oauth-proxy/Program.cs` with `services.AddHttpClient()`. The OAuth functions use it for token exchange calls to Spotify (`https://accounts.spotify.com/api/token`) and Apple Music token validation. The `DJai.ServiceDefaults` project adds standard resilience policies, ensuring that transient failures (network blips, provider rate limits) are automatically retried with exponential backoff.

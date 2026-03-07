@@ -55,7 +55,7 @@ class DIContainer {
 }
 
 // Usage — fully type-safe
-container.register('musicProvider', new YouTubeMusicProvider());
+container.register('musicProvider', new SpotifyProvider());
 const provider = container.get('musicProvider'); // typed as IMusicProvider
 ```
 

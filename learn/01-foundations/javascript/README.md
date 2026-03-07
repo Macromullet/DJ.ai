@@ -32,7 +32,6 @@ While DJ.ai's React frontend is written in TypeScript, the **Electron main proce
 | `electron-app/electron/main.cjs` | Electron main process — window management, IPC handlers, tray, deep linking |
 | `electron-app/electron/preload.cjs` | Context bridge — exposes `window.electron` API to renderer |
 | `electron-app/electron/validation.cjs` | Content Security Policy builder, OAuth URL validation |
-| `electron-app/electron/ytmusic-preload.cjs` | YouTube Music iframe isolation preload |
 
 ---
 

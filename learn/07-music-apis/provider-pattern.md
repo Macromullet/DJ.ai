@@ -2,7 +2,7 @@
 
 ## Concept
 
-The **Strategy Pattern** (also called the Provider Pattern in this context) defines a family of interchangeable algorithms behind a common interface. In DJ.ai, each music streaming service is a "strategy" — the application logic doesn't care whether you're playing from Apple Music, Spotify, or YouTube; it talks to `IMusicProvider` and the concrete provider handles the rest.
+The **Strategy Pattern** (also called the Provider Pattern in this context) defines a family of interchangeable algorithms behind a common interface. In DJ.ai, each music streaming service is a "strategy" — the application logic doesn't care whether you're playing from Apple Music or Spotify; it talks to `IMusicProvider` and the concrete provider handles the rest.
 
 This is a textbook application of the **Dependency Inversion Principle** (the "D" in SOLID): high-level modules depend on abstractions, not concrete implementations.
 
@@ -25,7 +25,6 @@ getRecommendations(track: Track): Promise<TrackRecommendation[]>;
 |----------|------|-------|
 | Apple Music | `electron-app/src/providers/AppleMusicProvider.ts` | ~536 |
 | Spotify | `electron-app/src/providers/SpotifyProvider.ts` | ~685 |
-| YouTube | `electron-app/src/providers/YouTubeMusicProvider.ts` | ~503 |
 
 ### Dependency Injection
 
@@ -65,7 +64,7 @@ The container also manages `ITTSService` and `IAICommentaryService` — all swap
 
 ## DJ.ai Connection
 
-The `IMusicProvider` interface is DJ.ai's central abstraction. The AI commentary system, TTS engine, and entire UI all program against this interface — making the app inherently multi-platform with minimal coupling.
+The `IMusicProvider` interface is DJ.ai's central abstraction. The AI commentary system, TTS engine, and entire UI all program against this interface — making the app inherently multi-platform with minimal coupling. Apple Music is the default provider, and Spotify is fully implemented.
 
 ## Further Reading
 

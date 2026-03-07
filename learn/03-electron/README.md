@@ -42,4 +42,4 @@ This separation enforces security: renderer processes are sandboxed and cannot d
 
 ## DJ.ai Connection
 
-DJ.ai's Electron layer lives in `electron-app/electron/`. The main process (`main.cjs`) manages multiple windows — the primary React app, a hidden YouTube Music player, and OAuth login popups. The preload script (`preload.cjs`) exposes a carefully curated API surface (`window.electron`) that the React renderer uses for playback control, AI requests, secure storage, and system tray updates. This architecture ensures the renderer never gets direct Node.js access while still enabling deep OS integration.
+DJ.ai's Electron layer lives in `electron-app/electron/`. The main process (`main.cjs`) manages windows — the primary React app and OAuth login popups. The preload script (`preload.cjs`) exposes a carefully curated API surface (`window.electron`) that the React renderer uses for AI requests, secure storage, and system tray updates. This architecture ensures the renderer never gets direct Node.js access while still enabling deep OS integration.

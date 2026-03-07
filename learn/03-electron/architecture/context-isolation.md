@@ -82,4 +82,4 @@ new BrowserWindow({
 
 ## DJ.ai Connection
 
-DJ.ai enables context isolation on all windows in `electron-app/electron/main.cjs` — the main app window, the YouTube Music window, and OAuth popups all have `contextIsolation: true`. This is especially important because the YouTube Music window loads third-party content from `music.youtube.com`, and OAuth windows load content from Google, Spotify, and Apple identity servers. Context isolation ensures these external pages cannot tamper with DJ.ai's preload bridge, keeping IPC channels secure even when rendering untrusted content.
+DJ.ai enables context isolation on all windows in `electron-app/electron/main.cjs` — the main app window and OAuth popups all have `contextIsolation: true`. This is especially important because OAuth windows load content from Spotify and Apple identity servers. Context isolation ensures these external pages cannot tamper with DJ.ai's preload bridge, keeping IPC channels secure even when rendering untrusted content.

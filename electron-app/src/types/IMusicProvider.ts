@@ -2,7 +2,7 @@
  * Unified Music Provider Interface
  * 
  * All music services (Spotify, Apple Music) implement this interface
- * to provide consistent functionality across different platforms.
+ * to provide a consistent API across different platforms.
  */
 
 import { Track } from './index';
@@ -48,7 +48,7 @@ export interface IMusicProvider {
   /**
    * Unique identifier for this provider
    */
-  readonly providerId: 'youtube' | 'spotify' | 'apple';  // 'youtube' kept for backward compat with YouTubeMusicProvider.ts
+  readonly providerId: 'spotify' | 'apple';
   
   /**
    * Display name for the provider

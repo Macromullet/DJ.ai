@@ -5,7 +5,7 @@
 Content Security Policy is an HTTP header that tells the browser **what resources are allowed to load**. It's the most effective defense against Cross-Site Scripting (XSS) because even if an attacker injects a `<script>` tag, the browser blocks it unless the script's source is in the CSP allowlist.
 
 ```http
-Content-Security-Policy: default-src 'self'; script-src 'self' https://apis.google.com; connect-src 'self' https://api.openai.com
+Content-Security-Policy: default-src 'self'; script-src 'self' https://sdk.scdn.co; connect-src 'self' https://api.openai.com
 ```
 
 ## Key Directives
@@ -13,12 +13,12 @@ Content-Security-Policy: default-src 'self'; script-src 'self' https://apis.goog
 | Directive | Controls | Example |
 |-----------|----------|---------|
 | `default-src` | Fallback for all resource types | `'self'` |
-| `script-src` | JavaScript execution | `'self' https://apis.google.com` |
+| `script-src` | JavaScript execution | `'self' https://sdk.scdn.co` |
 | `connect-src` | XHR, fetch, WebSocket destinations | `'self' https://api.openai.com` |
 | `style-src` | CSS loading | `'self' 'unsafe-inline'` |
 | `img-src` | Image sources | `'self' https: data:` |
 | `media-src` | Audio/video sources | `'self' blob:` |
-| `frame-src` | iframe sources | `https://www.youtube.com` |
+| `frame-src` | iframe sources | `'self'` |
 
 ## DJ.ai Implementation
 
@@ -35,16 +35,15 @@ DJ.ai sets CSP via Electron's `session.webRequest.onHeadersReceived` API in the 
 
 The `buildCSP()` function in `validation.cjs` defines allowlists for:
 
-- **script-src**: YouTube IFrame API, Spotify Web Playback SDK, Apple MusicKit JS
+- **script-src**: Spotify Web Playback SDK, Apple MusicKit JS
 - **connect-src**: OpenAI API, Anthropic API, Google Generative AI, ElevenLabs, Spotify API, Apple Music API, Azure Functions endpoints
-- **frame-src**: YouTube embeds for music playback
 - **style-src**: Includes `'unsafe-inline'` (necessary for React's style injection)
 
 ```javascript
 // Simplified example of CSP construction
 const csp = [
   "default-src 'self'",
-  "script-src 'self' https://apis.google.com https://sdk.scdn.co",
+  "script-src 'self' https://sdk.scdn.co",
   "connect-src 'self' https://api.openai.com https://api.anthropic.com",
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' https: data:",

@@ -320,8 +320,8 @@ describe('buildCSP', () => {
     expect(csp).toContain('https://api.music.apple.com')
   })
 
-  it('should include frame-src for YouTube', () => {
-    expect(csp).toContain('frame-src https://www.youtube.com https://music.youtube.com')
+  it('should not include frame-src for YouTube (removed)', () => {
+    expect(csp).not.toContain('youtube.com')
   })
 
   it('should include connect-src localhost wildcard', () => {
@@ -507,48 +507,6 @@ describe('isAllowedExternalProtocol', () => {
   it('should handle invalid URLs', () => {
     expect(validation.isAllowedExternalProtocol('')).toBe(false)
     expect(validation.isAllowedExternalProtocol('not-a-url')).toBe(false)
-  })
-})
-
-// ---------------------------------------------------------------------------
-// isValidYouTubeMusicUrl
-// ---------------------------------------------------------------------------
-describe('isValidYouTubeMusicUrl', () => {
-  it('should allow music.youtube.com', () => {
-    expect(
-      validation.isValidYouTubeMusicUrl('https://music.youtube.com/watch?v=abc123'),
-    ).toBe(true)
-  })
-
-  it('should allow music.youtube.com root', () => {
-    expect(validation.isValidYouTubeMusicUrl('https://music.youtube.com/')).toBe(true)
-  })
-
-  it('should reject www.youtube.com (not music)', () => {
-    expect(
-      validation.isValidYouTubeMusicUrl('https://www.youtube.com/watch?v=abc123'),
-    ).toBe(false)
-  })
-
-  it('should reject http (must be HTTPS)', () => {
-    expect(validation.isValidYouTubeMusicUrl('http://music.youtube.com/')).toBe(false)
-  })
-
-  it('should reject music.youtube.com.evil.com', () => {
-    expect(
-      validation.isValidYouTubeMusicUrl('https://music.youtube.com.evil.com/watch'),
-    ).toBe(false)
-  })
-
-  it('should reject evil.com with path spoofing', () => {
-    expect(
-      validation.isValidYouTubeMusicUrl('https://evil.com/music.youtube.com/'),
-    ).toBe(false)
-  })
-
-  it('should handle invalid URLs', () => {
-    expect(validation.isValidYouTubeMusicUrl('')).toBe(false)
-    expect(validation.isValidYouTubeMusicUrl('not-a-url')).toBe(false)
   })
 })
 

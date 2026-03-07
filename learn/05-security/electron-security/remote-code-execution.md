@@ -76,7 +76,7 @@ During Mixture-of-Experts code review (Round 1), a security-focused reviewer ide
 
 ### Playback Action Safety
 
-YouTube Music controls use `executeJavaScript` to interact with the embedded player. Instead of accepting arbitrary strings, DJ.ai uses an action allowlist:
+DJ.ai uses an action allowlist for playback controls to prevent arbitrary code execution:
 
 ```javascript
 // electron-app/electron/validation.cjs

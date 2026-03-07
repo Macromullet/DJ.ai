@@ -27,7 +27,7 @@ DJ.ai is a **three-layer application** with a distinctive "OAuth-only middle tie
 │  ├── /exchange — Code → tokens               │
 │  └── /refresh — Refresh expired tokens       │
 ├─────────────────────────────────────────────┤
-│  Music Providers (YouTube, Spotify, Apple)    │
+│  Music Providers (Spotify, Apple Music)         │
 │  └── Client calls these DIRECTLY             │
 └─────────────────────────────────────────────┘
 ```

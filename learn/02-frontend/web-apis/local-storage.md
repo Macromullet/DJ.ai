@@ -33,7 +33,7 @@ localStorage only stores strings. For objects and arrays, serialize with JSON:
 ```typescript
 // Storing an object
 const settings: SettingsConfig = {
-  currentProvider: 'youtube',
+  currentProvider: 'spotify',
   ttsEnabled: true,
   ttsProvider: 'web-speech',
   autoDJMode: false,
@@ -155,8 +155,8 @@ useEffect(() => {
 ## 🔗 DJ.ai Connection
 
 - **`electron-app/src/App.tsx`** — Persists `settings` to localStorage via `useEffect`; loads on mount via lazy `useState`
-- **`electron-app/src/providers/YouTubeMusicProvider.ts`** — Stores/reads OAuth tokens and expiry timestamps
-- **`electron-app/src/providers/SpotifyProvider.ts`** — Same token persistence pattern
+- **`electron-app/src/providers/SpotifyProvider.ts`** — Stores/reads OAuth tokens and expiry timestamps
+- **`electron-app/src/providers/AppleMusicProvider.ts`** — Same token persistence pattern
 - **`electron-app/src/utils/secretStorage.ts`** — Wraps Electron `safeStorage` for encrypting API keys stored in localStorage
 - **`electron-app/src/components/VolumeControl.tsx`** — Persists volume level
 - **`electron-app/src/components/OnboardingWizard.tsx`** — Stores onboarding completion status

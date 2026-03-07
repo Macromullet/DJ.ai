@@ -40,14 +40,12 @@ interface IMusicProvider {
 |----------|------|--------|
 | Apple Music | `AppleMusicProvider.ts` | ✅ Default provider, fully implemented |
 | Spotify | `SpotifyProvider.ts` | ✅ Fully implemented |
-| YouTube Music | `YouTubeMusicProvider.ts` | ⚠️ Search works, playback via iframe (UI removed) |
 
 ## Learning Path
 
 1. **[Provider Pattern](./provider-pattern.md)** — Interface-based abstraction that ties everything together
 2. **[Apple Music](./apple-music/)** — Default provider: MusicKit JS, developer tokens, Web API
 3. **[Spotify](./spotify/)** — Web API, Web Playback SDK, OAuth with PKCE
-4. **[YouTube](./youtube/)** — Data API v3, IFrame Player (historical)
 
 ## Key Takeaways
 

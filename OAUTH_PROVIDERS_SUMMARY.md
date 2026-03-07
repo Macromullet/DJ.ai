@@ -6,18 +6,8 @@ Overview of OAuth provider implementations in the DJ.ai OAuth proxy.
 
 | Provider | Status | Auth Type | Endpoints |
 |----------|--------|-----------|-----------|
-| YouTube Music | ✅ Fully working | OAuth 2.0 | initiate, exchange, refresh |
 | Spotify | ✅ Implemented | OAuth 2.0 | initiate, exchange, refresh |
 | Apple Music | ✅ Implemented | Developer Token (ES256 JWT) | initiate, developer-token, validate |
-
-## YouTube Music (Google)
-
-**File:** `oauth-proxy/Functions/YouTubeOAuthFunctions.cs`
-
-- Standard OAuth 2.0 Authorization Code Flow
-- Scopes: `https://www.googleapis.com/auth/youtube.readonly`
-- Tokens expire in 1 hour, refresh via `/refresh` endpoint
-- Credentials: Google Cloud Console → OAuth 2.0 Client ID
 
 ## Spotify
 
@@ -42,13 +32,13 @@ Overview of OAuth provider implementations in the DJ.ai OAuth proxy.
 
 ## API Comparison
 
-| Feature | YouTube | Spotify | Apple Music |
-|---------|---------|---------|-------------|
-| Auth Type | OAuth 2.0 | OAuth 2.0 | Developer Token + User Token |
-| Client Secret | Yes | Yes | No (uses private key) |
-| Refresh Tokens | Yes | Yes | N/A (user token different) |
-| Expires | 1 hour | 1 hour | 6 months (dev token) |
-| Signing | N/A | N/A | ES256 JWT |
+| Feature | Spotify | Apple Music |
+|---------|---------|-------------|
+| Auth Type | OAuth 2.0 | Developer Token + User Token |
+| Client Secret | Yes | No (uses private key) |
+| Refresh Tokens | Yes | N/A (user token different) |
+| Expires | 1 hour | 6 months (dev token) |
+| Signing | N/A | ES256 JWT |
 
 ## Configuration
 

@@ -40,7 +40,7 @@ The feature branch history is preserved in the **pull request** — all individu
 ```
 feat: add onboarding wizard with provider selection
 refactor: migrate to design token system
-fix: handle OAuth token expiry in YouTube provider
+fix: handle OAuth token expiry in Spotify provider
 feat: implement AI commentary with Gemini
 docs: add ARCHITECTURE.md
 ```
@@ -71,7 +71,7 @@ The squash commit message should summarize the entire body of work:
 feat: add onboarding wizard with provider selection
 
 - Three-step wizard: welcome, provider selection, completion
-- OAuth integration for YouTube, Spotify, Apple Music
+- OAuth integration for Spotify and Apple Music
 - Responsive layout with design token styling
 - Keyboard accessible with focus management
 

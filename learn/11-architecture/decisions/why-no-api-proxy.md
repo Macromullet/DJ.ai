@@ -6,7 +6,7 @@ Accepted
 
 ## Context
 
-When building an application that integrates with third-party APIs (YouTube, Spotify, Apple Music), a common pattern is to route all API requests through your backend. This "full proxy" approach has the backend call the provider API on behalf of the client.
+When building an application that integrates with third-party APIs (Spotify, Apple Music), a common pattern is to route all API requests through your backend. This "full proxy" approach has the backend call the provider API on behalf of the client.
 
 DJ.ai explicitly rejects this pattern. The question: **should the backend proxy music API requests, or should the client call providers directly?**
 
@@ -22,11 +22,11 @@ Every proxied request adds latency:
 
 ```
 Full proxy path:
-  Client → Azure Functions → YouTube API → Azure Functions → Client
+  Client → Azure Functions → Spotify API → Azure Functions → Client
   Added latency: ~50-200ms (two extra network hops)
 
 Direct path (DJ.ai):
-  Client → YouTube API → Client
+  Client → Spotify API → Client
   Added latency: 0ms
 ```
 
@@ -93,7 +93,7 @@ The access token is *designed* to be held by the client. That's the entire point
 
 ## DJ.ai Connection
 
-This decision shapes the entire architecture. The `oauth-proxy/` backend is intentionally minimal — three endpoints per provider. The `electron-app/src/providers/` directory contains all the API integration logic. `YouTubeMusicProvider.ts` makes direct calls to `googleapis.com` using stored OAuth tokens. This is the first thing to understand before reading the codebase.
+This decision shapes the entire architecture. The `oauth-proxy/` backend is intentionally minimal — three endpoints per provider. The `electron-app/src/providers/` directory contains all the API integration logic. `SpotifyProvider.ts` makes direct calls to `api.spotify.com` using stored OAuth tokens. This is the first thing to understand before reading the codebase.
 
 ## Further Reading
 

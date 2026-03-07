@@ -24,7 +24,7 @@ Follow the modules in order for a structured journey, or jump to any section rel
   │  ↓                                                   │
   │  06 AI & ML (LLM Commentary, TTS, Prompt Design)    │
   │  ↓                                                   │
-  │  07 Music APIs (YouTube, Spotify, Apple Music)       │
+  │  07 Music APIs (Spotify, Apple Music)       │
   │  ↓                                                   │
   │  08 Testing (Vitest, Playwright, xUnit)              │
   │  ↓                                                   │
@@ -102,7 +102,7 @@ OAuth 2.0 flows, Content Security Policy, device tokens, and secret management.
 LLM-powered DJ commentary (OpenAI, Anthropic, Copilot), text-to-speech services, and prompt engineering.
 
 ### [07 — Music APIs](./07-music-apis/README.md)
-YouTube Data API, Spotify Web API, Apple MusicKit JS — authentication, search, playback.
+Spotify Web API, Apple MusicKit JS — authentication, search, playback.
 
 ### [08 — Testing](./08-testing/README.md)
 Vitest for unit tests, Playwright for E2E, xUnit for .NET, and testing strategies.

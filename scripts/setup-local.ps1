@@ -35,8 +35,6 @@ Write-Host "✓ Prerequisites met" -ForegroundColor Green
 Write-Host ""
 
 $secrets = @(
-    @{ Name="GoogleClientId"; Description="Google OAuth Client ID (from Google Cloud Console > APIs & Services > Credentials)"; Required=$true },
-    @{ Name="GoogleClientSecret"; Description="Google OAuth Client Secret"; Required=$true },
     @{ Name="SpotifyClientId"; Description="Spotify OAuth Client ID (from developer.spotify.com/dashboard)"; Required=$true },
     @{ Name="SpotifyClientSecret"; Description="Spotify OAuth Client Secret"; Required=$true },
     @{ Name="AppleMusicTeamId"; Description="Apple Developer Team ID (from developer.apple.com/account)"; Required=$true },

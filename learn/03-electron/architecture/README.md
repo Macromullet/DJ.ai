@@ -52,4 +52,4 @@ Understanding this model is essential because it determines:
 
 ## DJ.ai Connection
 
-DJ.ai runs three types of windows simultaneously: the main React UI, a hidden YouTube Music player window, and ephemeral OAuth login popups. Each gets its own renderer process with a tailored preload script. The main process in `electron-app/electron/main.cjs` orchestrates all of them — creating windows, routing IPC messages, managing the system tray, and handling deep links. The preload script (`preload.cjs`) defines exactly which capabilities the React app can use via `window.electron`.
+DJ.ai runs two types of windows: the main React UI and ephemeral OAuth login popups. Each gets its own renderer process with a tailored preload script. The main process in `electron-app/electron/main.cjs` orchestrates all of them — creating windows, routing IPC messages, managing the system tray, and handling deep links. The preload script (`preload.cjs`) defines exactly which capabilities the React app can use via `window.electron`.

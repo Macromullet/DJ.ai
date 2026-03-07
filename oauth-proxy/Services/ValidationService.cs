@@ -118,7 +118,7 @@ public class ValidationService : IValidationService
         }
 
         // Should be alphanumeric or common OAuth chars (-, _, ., /, +, =)
-        // Google uses 4/... format with slashes; Spotify may use base64 with + and =
+        // Some providers use slashes (e.g., 4/...); Spotify may use base64 with + and =
         return code.All(c => char.IsLetterOrDigit(c) || c == '-' || c == '_' || c == '.' || c == '/' || c == '+' || c == '=');
     }
 

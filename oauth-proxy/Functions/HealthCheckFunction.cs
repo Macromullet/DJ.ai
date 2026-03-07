@@ -26,7 +26,7 @@ public class HealthCheckFunction
         try
         {
             // Verify Key Vault connectivity by reading a known secret
-            await _secretService.GetSecretAsync("GoogleClientId");
+            await _secretService.GetSecretAsync("SpotifyClientId");
             keyVaultStatus = "connected";
         }
         catch (Exception ex)

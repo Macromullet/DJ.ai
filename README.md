@@ -9,7 +9,7 @@ An AI-powered music DJ application that provides intelligent commentary, recomme
 
 ## ✨ Features
 
-- 🎵 **Multi-Platform Support** — YouTube Music, Spotify, Apple Music
+- 🎵 **Multi-Platform Support** — Spotify and Apple Music
 - 🤖 **AI Commentary** — Intelligent DJ-style commentary using GitHub Copilot or OpenAI
 - 🔊 **Text-to-Speech** — Natural voice narration of track info and commentary
 - 🔐 **Secure OAuth** — Client secrets in Azure Key Vault, tokens via `safeStorage`
@@ -50,7 +50,7 @@ See [DEV_SETUP.md](DEV_SETUP.md) for complete setup instructions.
 **Orchestration** → .NET Aspire (dev), Bicep + `azd` (prod)  
 **CI/CD** → GitHub Actions (build, deploy, release)  
 **AI** → GitHub Copilot API + OpenAI API  
-**Music** → YouTube Data API, Spotify Web API, Apple Music API
+**Music** → Spotify Web API, Apple Music API
 
 The OAuth proxy handles **only** token exchange — all music API calls go directly from the Electron app to providers. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for details.
 
@@ -66,7 +66,7 @@ The OAuth proxy handles **only** token exchange — all music API calls go direc
 
 ## 🎯 Current Status
 
-✅ **Working:** YouTube Music, Spotify, Apple Music providers, OAuth flow, Aspire dev environment  
+✅ **Working:** Spotify, Apple Music providers, OAuth flow, Aspire dev environment  
 ✅ **Deployed:** GitHub Actions CI/CD, Bicep infrastructure, `azd` deployment  
 ✅ **Secured:** CSP, safeStorage, `djai://` protocol, Redis-backed rate limiting  
 🚧 **In Progress:** AI commentary, TTS narration  

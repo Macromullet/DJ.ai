@@ -29,7 +29,7 @@ Electron App
     → OAuth Proxy (Azure Functions)
       → Redis: Validate token, check rate limit
         → Key Vault: Get client secret
-          → Google OAuth: Exchange token
+          → Spotify OAuth: Exchange token
 ```
 
 ## Learning Path

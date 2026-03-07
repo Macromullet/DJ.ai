@@ -33,7 +33,7 @@ const [currentTrack, setCurrentTrack] = useState<Track | null>(null);
 
 // Explicit type for complex objects
 const [settings, setSettings] = useState<SettingsConfig>({
-  currentProvider: 'youtube',
+  currentProvider: 'spotify',
   ttsEnabled: true,
   ttsProvider: 'web-speech',
   autoDJMode: false,

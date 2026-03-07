@@ -83,7 +83,7 @@ With the configuration above, DJ.ai automatically captures:
 | Source | Data |
 |--------|------|
 | `AddAspNetCoreInstrumentation` | Incoming HTTP requests (method, path, status, duration) |
-| `AddHttpClientInstrumentation` | Outgoing HTTP calls to Google OAuth, Key Vault |
+| `AddHttpClientInstrumentation` | Outgoing HTTP calls to Spotify OAuth, Key Vault |
 | `AddRuntimeInstrumentation` | GC collections, thread pool, memory allocation |
 
 ### Adding Custom Spans

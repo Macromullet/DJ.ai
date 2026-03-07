@@ -72,8 +72,8 @@ builder.AddViteApp("electron-app", "../electron-app", "dev");
 
 ```bash
 cd DJai.AppHost
-dotnet user-secrets set "GoogleClientId" "your-client-id"
-dotnet user-secrets set "GoogleClientSecret" "your-client-secret"
+dotnet user-secrets set "SpotifyClientId" "your-client-id"
+dotnet user-secrets set "SpotifyClientSecret" "your-client-secret"
 ```
 
 The `setup.ps1 --local` script automates this for all providers.

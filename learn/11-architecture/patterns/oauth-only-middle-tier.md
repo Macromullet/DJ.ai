@@ -10,23 +10,23 @@ Instead, DJ.ai's backend handles **only OAuth token operations** — initiating 
 
 ```
 Full API Proxy:
-  Client → Backend → YouTube API → Backend → Client
+  Client → Backend → Spotify API → Backend → Client
   (Every API call costs backend compute)
 
 OAuth-Only (DJ.ai):
   Client → Backend → Client (token exchange only)
-  Client → YouTube API → Client (direct, fast, free)
+  Client → Spotify API → Client (direct, fast, free)
 ```
 
 ## Why This Architecture?
 
 ### 1. Performance
 
-Direct API calls eliminate a network hop. The client talks to YouTube/Spotify directly instead of routing through an intermediary:
+Direct API calls eliminate a network hop. The client talks to Spotify/Apple Music directly instead of routing through an intermediary:
 
 ```
-Full proxy:  Client → Azure → YouTube → Azure → Client  (~200ms added)
-OAuth-only:  Client → YouTube → Client                    (direct, minimal latency)
+Full proxy:  Client → Azure → Spotify → Azure → Client  (~200ms added)
+OAuth-only:  Client → Spotify → Client                    (direct, minimal latency)
 ```
 
 ### 2. Cost
@@ -35,28 +35,28 @@ Azure Functions charge per execution and per GB-second. With a full proxy, every
 
 ### 3. Simplicity
 
-The backend is just three endpoints per provider. No need to mirror every YouTube/Spotify API endpoint, handle pagination, or manage streaming responses.
+The backend is just three endpoints per provider. No need to mirror every Spotify/Apple Music API endpoint, handle pagination, or manage streaming responses.
 
 ### 4. Security Is Preserved
 
 The reason backends exist in OAuth is to protect **client secrets** — the private key that proves your app's identity to the provider. DJ.ai's backend still does this:
 
 ```
-1. User clicks "Connect YouTube"
-2. App calls /oauth/youtube/initiate
+1. User clicks "Connect Spotify"
+2. App calls /oauth/spotify/initiate
 3. Backend builds auth URL using client secret (from Key Vault)
 4. User logs in, gets authorization code
-5. App calls /oauth/youtube/exchange with the code
+5. App calls /oauth/spotify/exchange with the code
 6. Backend exchanges code for tokens using client secret
 7. App stores tokens in localStorage
-8. App calls YouTube API directly using access token
+8. App calls Spotify API directly using access token
 ```
 
 The client secret never leaves the backend. The access token (which is safe for the client to hold) does all the work.
 
 ## DJ.ai Connection
 
-This is the **core architectural decision** in DJ.ai. The OAuth proxy in `oauth-proxy/Functions/` implements three endpoints per provider: `initiate`, `exchange`, and `refresh`. The frontend providers in `electron-app/src/providers/` (like `YouTubeMusicProvider.ts`) make direct API calls using stored OAuth tokens. Understanding this pattern is essential before reading any other architecture documentation.
+This is the **core architectural decision** in DJ.ai. The OAuth proxy in `oauth-proxy/Functions/` implements three endpoints per provider: `initiate`, `exchange`, and `refresh`. The frontend providers in `electron-app/src/providers/` (like `SpotifyProvider.ts`) make direct API calls using stored OAuth tokens. Understanding this pattern is essential before reading any other architecture documentation.
 
 ## Key Takeaways
 

@@ -6,9 +6,8 @@ AI-powered music DJ with cross-platform support via Electron, React 18, TypeScri
 
 | Provider | Status | Notes |
 |---|---|---|
-| YouTube Music | ✅ Fully working | OAuth via proxy, direct API calls |
-| Spotify | ✅ Wired | OAuth via proxy, direct API calls |
-| Apple Music | ✅ Wired | OAuth via proxy, direct API calls |
+| Spotify | ✅ Fully working | OAuth via proxy, direct API calls |
+| Apple Music | ✅ Fully working | OAuth via proxy, direct API calls |
 
 ## Architecture
 
@@ -35,9 +34,8 @@ electron-app/
 │   │   ├── OAuthCallback.tsx
 │   │   └── ErrorBoundary.tsx
 │   ├── providers/         # IMusicProvider implementations
-│   │   ├── YouTubeMusicProvider.ts   # ✅ Fully working
-│   │   ├── SpotifyProvider.ts        # ✅ Wired
-│   │   └── AppleMusicProvider.ts     # ✅ Wired
+│   │   ├── SpotifyProvider.ts        # ✅ Fully working
+│   │   └── AppleMusicProvider.ts     # ✅ Fully working
 │   ├── services/          # AI commentary, TTS
 │   ├── styles/            # Design token system
 │   │   ├── tokens.css     # 120+ CSS custom properties

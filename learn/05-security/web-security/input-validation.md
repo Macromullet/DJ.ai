@@ -21,7 +21,7 @@
 if (!input.includes("<script>")) { /* process */ }
 
 // ✅ Allowlist — only accept known-good values
-const VALID_PROVIDERS = ["spotify", "youtube", "apple"];
+const VALID_PROVIDERS = ["spotify", "apple"];
 if (VALID_PROVIDERS.includes(provider)) { /* process */ }
 ```
 
@@ -49,7 +49,7 @@ DJ.ai validates inputs at multiple layers:
 | `isValidRedirectUri(uri)` | OAuth redirect URI format and host |
 | `isValidPlaybackAction(action)` | Playback command against action allowlist |
 | `isAllowedExternalProtocol(url)` | External URLs for `shell.openExternal` |
-| `isValidYouTubeMusicUrl(url)` | YouTube Music embed URLs |
+
 | `isTTSResponseWithinLimit(size)` | TTS audio response size (max 10 MB) |
 
 ### Backend — Device Token Validation
@@ -64,7 +64,7 @@ DJ.ai validates inputs at multiple layers:
 
 | Input | Where | Validation |
 |-------|-------|------------|
-| OAuth provider name | Backend functions | Allowlist: spotify, youtube, apple |
+| OAuth provider name | Backend functions | Allowlist: spotify, apple |
 | Redirect URI | `ValidationService.cs` | Host/port/scheme allowlist |
 | Device token | `RedisDeviceAuthService.cs` | GUID format (RFC 4122) |
 | AI API URL | `validation.cjs` | Parsed hostname against allowlist |

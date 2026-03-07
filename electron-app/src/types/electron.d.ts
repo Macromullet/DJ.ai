@@ -15,14 +15,6 @@ interface AiProxyRequestOptions {
 }
 
 interface ElectronBridge {
-  ytMusic: {
-    playUrl: (url: string) => Promise<void>;
-    control: (action: string) => Promise<void>;
-    getTrack: () => Promise<unknown>;
-    show: () => Promise<void>;
-    hide: () => Promise<void>;
-    search: (query: string) => Promise<unknown>;
-  };
   oauthDeepLink: {
     onCallback: (callback: (url: string) => void) => void;
     removeCallback: () => void;

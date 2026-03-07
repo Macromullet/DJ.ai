@@ -78,8 +78,6 @@ try {
 }
 
 $secrets = @(
-    @{ Name="GoogleClientId"; Description="Google OAuth Client ID"; Required=$true },
-    @{ Name="GoogleClientSecret"; Description="Google OAuth Client Secret"; Required=$true },
     @{ Name="SpotifyClientId"; Description="Spotify OAuth Client ID"; Required=$true },
     @{ Name="SpotifyClientSecret"; Description="Spotify OAuth Client Secret"; Required=$true },
     @{ Name="AppleMusicTeamId"; Description="Apple Developer Team ID"; Required=$true },

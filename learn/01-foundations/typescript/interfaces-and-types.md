@@ -15,7 +15,7 @@ Interfaces define a contract — a set of properties and methods that an object 
 ```typescript
 // From electron-app/src/types/IMusicProvider.ts
 interface IMusicProvider {
-  readonly providerId: 'youtube' | 'spotify' | 'apple';
+  readonly providerId: 'spotify' | 'apple';
   readonly providerName: string;
   isAuthenticated: boolean;
 
@@ -38,7 +38,7 @@ Type aliases name any type — not just objects. They're ideal for unions, primi
 
 ```typescript
 // Union type — used throughout DJ.ai
-type ProviderId = 'youtube' | 'spotify' | 'apple';
+type ProviderId = 'spotify' | 'apple';
 type TTSProvider = 'web-speech' | 'openai' | 'gemini' | 'elevenlabs';
 type AIProvider = 'openai' | 'anthropic' | 'copilot';
 
@@ -120,7 +120,6 @@ Interfaces with the same name automatically merge — useful for extending third
 // electron-app/src/types/electron.d.ts extends Window
 interface Window {
   electron: {
-    ytMusic: { playUrl(url: string): void; /* ... */ };
     aiProxy: { request(options: any): Promise<any>; };
     safeStorage: { encrypt(text: string): Promise<string>; };
   };

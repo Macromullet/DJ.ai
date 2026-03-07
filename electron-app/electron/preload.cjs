@@ -2,16 +2,6 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('electron', {
-  // YouTube Music controls
-  ytMusic: {
-    playUrl: (url) => ipcRenderer.invoke('yt-music-play-url', url),
-    control: (action) => ipcRenderer.invoke('yt-music-control', action),
-    getTrack: () => ipcRenderer.invoke('yt-music-get-track'),
-    show: () => ipcRenderer.invoke('yt-music-show'),
-    hide: () => ipcRenderer.invoke('yt-music-hide'),
-    search: (query) => ipcRenderer.invoke('yt-music-search', query)
-  },
-
   // OAuth deep link handler (for packaged app custom protocol)
   oauthDeepLink: {
     onCallback: (callback) => {

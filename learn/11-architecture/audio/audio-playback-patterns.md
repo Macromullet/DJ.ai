@@ -117,7 +117,7 @@ this.audio.onerror = (event) => {
 
 ## DJ.ai Connection
 
-DJ.ai's TTS services in `electron-app/src/services/` use the HTML5 Audio element as the primary playback path. Each service creates an `Audio` instance, sets the Blob URL as the source, and handles `onended`/`onerror` events for cleanup. The AudioContext path is used when browser autoplay policies block the simpler approach. Music playback (from YouTube/Spotify) uses embedded players rather than direct Audio elements.
+DJ.ai's TTS services in `electron-app/src/services/` use the HTML5 Audio element as the primary playback path. Each service creates an `Audio` instance, sets the Blob URL as the source, and handles `onended`/`onerror` events for cleanup. The AudioContext path is used when browser autoplay policies block the simpler approach. Music playback (from Spotify/Apple Music) uses embedded players rather than direct Audio elements.
 
 ## Key Takeaways
 

@@ -38,7 +38,7 @@ If `nodeIntegration: true` is set (the insecure default in older Electron), any 
 DJ.ai's Electron security is configured in:
 
 - **`electron-app/electron/main.cjs`** — Window creation with `nodeIntegration: false`, `contextIsolation: true`, CSP injection, IPC handler validation, rate-limited decrypt
-- **`electron-app/electron/preload.cjs`** — Minimal `contextBridge` API surface for YouTube controls, OAuth, AI proxy, safeStorage, and notifications
+- **`electron-app/electron/preload.cjs`** — Minimal `contextBridge` API surface for OAuth, AI proxy, safeStorage, and notifications
 - **`electron-app/electron/validation.cjs`** — Pure validation functions used by all IPC handlers
 
 ## Key Takeaways

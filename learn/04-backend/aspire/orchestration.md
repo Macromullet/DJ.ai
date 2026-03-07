@@ -15,8 +15,6 @@ var redis = builder.AddRedis("cache")
     .WithRedisInsight();
 
 // 2. Read OAuth secrets from configuration
-var googleClientId = builder.Configuration["GoogleClientId"];
-var googleClientSecret = builder.Configuration["GoogleClientSecret"];
 var spotifyClientId = builder.Configuration["SpotifyClientId"];
 var spotifyClientSecret = builder.Configuration["SpotifyClientSecret"];
 
@@ -24,8 +22,6 @@ var spotifyClientSecret = builder.Configuration["SpotifyClientSecret"];
 var oauthProxy = builder.AddAzureFunctionsProject<Projects.DJai_OAuthProxy>("oauth-proxy")
     .WithReference(redis)                           // Connect to Redis
     .WithExternalHttpEndpoints()                    // Expose HTTP endpoints
-    .WithEnvironment("GoogleClientId", googleClientId)
-    .WithEnvironment("GoogleClientSecret", googleClientSecret)
     .WithEnvironment("SpotifyClientId", spotifyClientId)
     .WithEnvironment("SpotifyClientSecret", spotifyClientSecret);
 
@@ -52,7 +48,7 @@ builder.Build().Run();
 `WithEnvironment()` passes configuration values to services:
 
 ```csharp
-.WithEnvironment("GoogleClientId", googleClientId)
+.WithEnvironment("SpotifyClientId", spotifyClientId)
 ```
 
 This is how OAuth secrets flow from the developer's machine (Aspire host config) to the running Functions app without being in source control.

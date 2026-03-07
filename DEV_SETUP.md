@@ -29,11 +29,10 @@ This will:
 - Store them securely via [dotnet user-secrets](https://learn.microsoft.com/en-us/aspnet/core/security/app-secrets) (encrypted, never in source control)
 
 You'll need credentials for at least one provider:
-- **YouTube Music**: [Google Cloud Console](https://console.cloud.google.com/) → APIs & Services → Credentials → OAuth 2.0 Client ID
 - **Spotify**: [Spotify Developer Dashboard](https://developer.spotify.com/dashboard) → Create App → Client ID & Secret
 - **Apple Music**: [Apple Developer Portal](https://developer.apple.com/account) → Certificates, Identifiers & Profiles → Keys → MusicKit
 
-> **Note**: You can skip providers you don't need. Only YouTube Music is required for basic functionality.
+> **Note**: You can skip providers you don't need.
 
 ### 2. Start Everything
 
@@ -92,7 +91,7 @@ cd oauth-proxy
 ### Test Electron App
 
 1. Open Settings (⚙️)
-2. Select a music provider (YouTube Music, Spotify, or Apple Music)
+2. Select a music provider (Spotify or Apple Music)
 3. Click "Connect" — you should see an OAuth login popup
 
 If you get errors, check:
@@ -116,7 +115,6 @@ cp oauth-proxy/local.settings.json.example oauth-proxy/local.settings.json
 ### Electron App (`electron-app/.env.local`)
 ```bash
 VITE_OAUTH_PROXY_URL=http://localhost:7071/api
-VITE_GOOGLE_CLIENT_ID=your-google-client-id.apps.googleusercontent.com
 VITE_SPOTIFY_CLIENT_ID=your-spotify-client-id
 ```
 🔒 **NEVER commit this file!** (Already in .gitignore)
@@ -159,12 +157,6 @@ Start Docker Desktop — Redis runs as a container. Without Docker, use the manu
 | Auth | Environment variables | Managed Identity |
 
 ## Getting OAuth Credentials
-
-### Google (YouTube Music)
-1. Go to https://console.cloud.google.com/apis/credentials
-2. Create OAuth 2.0 Client ID (Web application)
-3. Add redirect: `http://localhost:5173/oauth/callback`
-4. Copy Client ID and Client Secret
 
 ### Spotify
 1. Go to https://developer.spotify.com/dashboard

@@ -49,7 +49,7 @@ ES modules are the JavaScript standard, supported by browsers and modern Node.js
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { IMusicProvider, SearchResult, Track } from './types';
-import { YouTubeMusicProvider } from './providers';
+import { SpotifyProvider } from './providers';
 import { Settings } from './components/Settings';
 import { Toast, useToast } from './components/Toast';
 
@@ -83,8 +83,7 @@ electron-app/
 ├── electron/
 │   ├── main.cjs          ← CommonJS (Electron main process)
 │   ├── preload.cjs        ← CommonJS (Electron preload)
-│   ├── validation.cjs     ← CommonJS (CSP builder)
-│   └── ytmusic-preload.cjs ← CommonJS (iframe preload)
+│   └── validation.cjs     ← CommonJS (CSP builder)
 ├── src/
 │   ├── App.tsx            ← ESM (React, transpiled by Vite)
 │   ├── types/             ← ESM
@@ -123,7 +122,7 @@ async function loadModule() {
 - **`electron-app/electron/main.cjs`** — CommonJS main process: `require('electron')`, `require('path')`, `module.exports` patterns; uses `__dirname` for path resolution
 - **`electron-app/electron/preload.cjs`** — CommonJS preload: `require('electron').contextBridge` exposes APIs to the renderer
 - **`electron-app/src/App.tsx`** — ESM imports for React, providers, services, components
-- **`electron-app/src/providers/index.ts`** — ESM re-exports: `export { YouTubeMusicProvider } from './YouTubeMusicProvider'`
+- **`electron-app/src/providers/index.ts`** — ESM re-exports: `export { SpotifyProvider } from './SpotifyProvider'`
 - **`electron-app/src/types/index.ts`** — ESM barrel file re-exporting all type definitions
 - **`electron-app/vite.config.ts`** — ESM configuration file consumed by Vite
 

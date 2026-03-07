@@ -371,7 +371,7 @@ ipcMain.handle('ai-api-request', async (event, { url, method, headers, body }) =
       };
     }
 
-    const response = await fetch(url, {
+    const response = await fetch(parsed.href, {
       method: method || 'POST',
       headers: headers || {},
       body: body ? JSON.stringify(body) : undefined,
@@ -405,7 +405,7 @@ ipcMain.handle('ai-tts-request', async (event, { url, method, headers, body }) =
       return { ok: false, status: 403, statusText: 'Only HTTPS requests are allowed', body: null };
     }
 
-    const response = await fetch(url, {
+    const response = await fetch(parsed.href, {
       method: method || 'POST',
       headers: headers || {},
       body: body ? JSON.stringify(body) : undefined,

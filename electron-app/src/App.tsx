@@ -88,6 +88,7 @@ function MainApp() {
   // Refs to avoid stale closures inside YouTube player event handlers
   const autoDJModeRef = useRef(settings.autoDJMode);
   const ttsEnabledRef = useRef(settings.ttsEnabled);
+  const isTransitioningRef = useRef(false);
   const playlistRef = useRef(playlist);
   const currentTrackRef = useRef(currentTrack);
 
@@ -241,6 +242,9 @@ function MainApp() {
 
   /** Auto-DJ: generate commentary for upcoming track, speak it, then play */
   const handleAutoDJTransition = async () => {
+    if (isTransitioningRef.current) return;
+    isTransitioningRef.current = true;
+    try {
     const pl = playlistRef.current;
     const ct = currentTrackRef.current;
     if (!pl.length || !ct) { handleNext(); return; }
@@ -272,6 +276,9 @@ function MainApp() {
     }
 
     handlePlayTrack(nextTrack);
+    } finally {
+      isTransitioningRef.current = false;
+    }
   };
 
   const handleSearch = async () => {

@@ -70,12 +70,16 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
+      - name: Login azd
+        run: azd auth login --client-id ${{ secrets.AZURE_CLIENT_ID }} --federated-credential-provider github --tenant-id ${{ secrets.AZURE_TENANT_ID }}
+
       - name: Set azd environment
         run: |
           azd env new staging --no-prompt
           azd env set AZURE_LOCATION ${{ vars.AZURE_LOCATION || 'eastus2' }}
           # ALLOWED_REDIRECT_HOSTS must be set as a GitHub repository variable for production deployments
           azd env set ALLOWED_REDIRECT_HOSTS "${{ vars.ALLOWED_REDIRECT_HOSTS || '' }}"
+          azd env set AZURE_SUBSCRIPTION_ID ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
       - name: Provision infrastructure
         run: azd provision --no-prompt
@@ -106,12 +110,16 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
+      - name: Login azd
+        run: azd auth login --client-id ${{ secrets.AZURE_CLIENT_ID }} --federated-credential-provider github --tenant-id ${{ secrets.AZURE_TENANT_ID }}
+
       - name: Set azd environment
         run: |
           azd env new production --no-prompt
           azd env set AZURE_LOCATION ${{ vars.AZURE_LOCATION || 'eastus2' }}
           # ALLOWED_REDIRECT_HOSTS must be set as a GitHub repository variable for production deployments
           azd env set ALLOWED_REDIRECT_HOSTS "${{ vars.ALLOWED_REDIRECT_HOSTS || '' }}"
+          azd env set AZURE_SUBSCRIPTION_ID ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
       - name: Provision infrastructure
         run: azd provision --no-prompt

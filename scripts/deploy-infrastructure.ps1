@@ -1,16 +1,28 @@
 <#
 .SYNOPSIS
-    Deploy DJ.ai infrastructure from your local machine (no GitHub Actions needed).
+    Deploy DJ.ai infrastructure and app to Azure.
 
 .DESCRIPTION
-    Validates Bicep templates, then provisions and/or deploys to a target environment
-    using your local Azure CLI credentials. Much faster iteration than CI/CD.
+    Validates Bicep templates, then provisions infrastructure and deploys the app
+    to Azure. Uses your local Azure CLI credentials — no GitHub Actions needed.
+
+    On first run you'll be prompted to log in and select a subscription.
+    Your choices are saved in .azure/<Environment>/.env so subsequent runs
+    skip the interactive prompts.
 
 .PARAMETER Environment
-    Target environment name (default: 'dev'). Creates resource group 'rg-<env>'.
+    Target environment name (default: 'dev'). Maps to azd environment.
 
 .PARAMETER Location
     Azure region (default: 'eastus2').
+
+.PARAMETER TenantId
+    Azure AD tenant ID. If not provided, uses the tenant from your current
+    az login session. Override when your account has access to multiple tenants.
+
+.PARAMETER SubscriptionId
+    Azure subscription ID. If not provided, uses the subscription from your
+    current az login session.
 
 .PARAMETER SkipProvision
     Skip infrastructure provisioning (only redeploy the app code).
@@ -22,15 +34,18 @@
     Comma-separated redirect hosts (default: 'localhost:5173,localhost:5174').
 
 .EXAMPLE
-    .\scripts\deploy-local.ps1                          # Full deploy to 'dev'
-    .\scripts\deploy-local.ps1 -ValidateOnly            # Just validate Bicep
-    .\scripts\deploy-local.ps1 -Environment staging      # Deploy to staging
-    .\scripts\deploy-local.ps1 -SkipProvision            # Redeploy app only
+    .\scripts\deploy-infrastructure.ps1                                    # Full deploy to 'dev'
+    .\scripts\deploy-infrastructure.ps1 -ValidateOnly                      # Just validate Bicep
+    .\scripts\deploy-infrastructure.ps1 -Environment staging               # Deploy to staging
+    .\scripts\deploy-infrastructure.ps1 -SkipProvision                     # Redeploy app only
+    .\scripts\deploy-infrastructure.ps1 -TenantId abc... -SubscriptionId xyz...  # Explicit tenant/sub
 #>
 
 param(
     [string]$Environment = 'dev',
     [string]$Location = 'eastus2',
+    [string]$TenantId,
+    [string]$SubscriptionId,
     [switch]$SkipProvision,
     [switch]$ValidateOnly,
     [string]$AllowedRedirectHosts = 'localhost:5173,localhost:5174'
@@ -39,7 +54,7 @@ param(
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
 
-Write-Host "`n=== DJ.ai Local Deploy ===" -ForegroundColor Cyan
+Write-Host "`n=== DJ.ai Azure Deploy ===" -ForegroundColor Cyan
 Write-Host "Environment: $Environment"
 Write-Host "Location:    $Location"
 Write-Host ""
@@ -57,14 +72,35 @@ if (-not (Get-Command azd -ErrorAction SilentlyContinue)) {
     Write-Error "Azure Developer CLI (azd) not found. Install from https://aka.ms/azure-dev/install"
 }
 
-# Check logged in
-$account = az account show 2>&1
-if ($LASTEXITCODE -ne 0) {
-    Write-Error "Not logged into Azure CLI. Run: az login"
+# Ensure az is logged in (to the right tenant if specified)
+if ($TenantId) {
+    Write-Host "  Logging into tenant $TenantId..." -ForegroundColor Gray
+    az login --tenant $TenantId --only-show-errors | Out-Null
+    if ($LASTEXITCODE -ne 0) {
+        Write-Error "Azure CLI login failed. Complete the browser sign-in and try again."
+    }
+} else {
+    $account = az account show 2>&1
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "  Not logged in — opening browser for Azure sign-in..." -ForegroundColor Gray
+        az login --only-show-errors | Out-Null
+        if ($LASTEXITCODE -ne 0) {
+            Write-Error "Azure CLI login failed."
+        }
+    }
 }
-$accountInfo = $account | ConvertFrom-Json
-Write-Host "  Subscription: $($accountInfo.name) ($($accountInfo.id))" -ForegroundColor Gray
-Write-Host "  Tenant:       $($accountInfo.tenantId)" -ForegroundColor Gray
+
+# Set subscription if specified
+if ($SubscriptionId) {
+    az account set --subscription $SubscriptionId 2>&1 | Out-Null
+    if ($LASTEXITCODE -ne 0) {
+        Write-Error "Failed to set subscription $SubscriptionId. Check that your account has access."
+    }
+}
+
+$account = az account show 2>&1 | ConvertFrom-Json
+Write-Host "  Subscription: $($account.name) ($($account.id))" -ForegroundColor Gray
+Write-Host "  Tenant:       $($account.tenantId)" -ForegroundColor Gray
 
 # --- Validate Bicep ---
 Write-Host "`n[2/5] Validating Bicep templates..." -ForegroundColor Yellow
@@ -73,7 +109,7 @@ $bicepFiles = Get-ChildItem -Path "$root\infra" -Recurse -Filter '*.bicep'
 $hasErrors = $false
 
 foreach ($file in $bicepFiles) {
-    $result = az bicep build --file $file.FullName 2>&1
+    $result = az bicep build --file $file.FullName --stdout 2>&1
     if ($LASTEXITCODE -ne 0) {
         Write-Host "  FAIL: $($file.Name)" -ForegroundColor Red
         Write-Host $result -ForegroundColor Red
@@ -97,11 +133,15 @@ Write-Host "`n[3/5] Setting up azd environment '$Environment'..." -ForegroundCol
 
 Push-Location $root
 try {
-    azd auth login 2>$null
+    # Log azd into the correct tenant
+    $azdLoginArgs = @('auth', 'login')
+    if ($TenantId) { $azdLoginArgs += '--tenant-id', $TenantId }
+    & azd @azdLoginArgs 2>$null
+
     azd env new $Environment --no-prompt 2>$null
     azd env set AZURE_LOCATION $Location
     azd env set ALLOWED_REDIRECT_HOSTS $AllowedRedirectHosts
-    azd env set AZURE_SUBSCRIPTION_ID $accountInfo.id
+    azd env set AZURE_SUBSCRIPTION_ID $account.id
 
     if (-not $SkipProvision) {
         # --- Provision infrastructure ---

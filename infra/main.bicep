@@ -1,3 +1,14 @@
+// =============================================================================
+// DJ.ai Infrastructure — Hardened Deployment
+// =============================================================================
+// FIC (Federated Identity Credential) Permission Requirements:
+//   The GitHub Actions service principal used by azd/CI needs:
+//     - "Contributor" on the resource group (to create/update resources)
+//     - "User Access Administrator" on the resource group (to create role assignments)
+//   OR a custom role combining both. Without "User Access Administrator", the role
+//   assignment modules (storageAccess, keyVaultAccess) will fail at deploy time.
+// =============================================================================
+
 targetScope = 'resourceGroup'
 
 @description('Primary location for all resources')
@@ -6,7 +17,7 @@ param location string = resourceGroup().location
 @description('Environment name (dev, staging, prod)')
 param environmentName string
 
-@description('Comma-separated list of allowed OAuth redirect hosts for production. Set via: azd env set ALLOWED_REDIRECT_HOSTS host1,host2')
+@description('Comma-separated list of allowed OAuth redirect hosts for production (e.g., your-app.azurestaticapps.net). Set via: azd env set ALLOWED_REDIRECT_HOSTS <host1,host2>')
 param allowedRedirectHosts string = ''
 
 @description('Unique suffix for resource names')
@@ -19,7 +30,31 @@ var tags = {
   app: 'djai'
 }
 
-// Log Analytics Workspace
+// ---------------------------------------------------------------------------
+// Networking — VNet, Private DNS Zones
+// ---------------------------------------------------------------------------
+
+module vnet 'modules/vnet.bicep' = {
+  name: 'vnet'
+  params: {
+    name: 'vnet-${resourceToken}'
+    location: location
+    tags: tags
+  }
+}
+
+module dnsZones 'modules/private-dns-zones.bicep' = {
+  name: 'private-dns-zones'
+  params: {
+    vnetId: vnet.outputs.id
+    tags: tags
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Observability — Log Analytics, Application Insights
+// ---------------------------------------------------------------------------
+
 module logAnalytics 'modules/log-analytics.bicep' = {
   name: 'log-analytics'
   params: {
@@ -29,7 +64,6 @@ module logAnalytics 'modules/log-analytics.bicep' = {
   }
 }
 
-// Application Insights
 module appInsights 'modules/app-insights.bicep' = {
   name: 'app-insights'
   params: {
@@ -40,27 +74,10 @@ module appInsights 'modules/app-insights.bicep' = {
   }
 }
 
-// Key Vault
-module keyVault 'modules/key-vault.bicep' = {
-  name: 'key-vault'
-  params: {
-    name: 'kv-${resourceToken}'
-    location: location
-    tags: tags
-  }
-}
+// ---------------------------------------------------------------------------
+// Data — Storage, Redis, Key Vault (all with publicNetworkAccess: Disabled)
+// ---------------------------------------------------------------------------
 
-// Redis Cache
-module redis 'modules/redis.bicep' = {
-  name: 'redis'
-  params: {
-    name: 'redis-${resourceToken}'
-    location: location
-    tags: tags
-  }
-}
-
-// Storage Account (for Azure Functions)
 module storage 'modules/storage.bicep' = {
   name: 'storage'
   params: {
@@ -70,7 +87,97 @@ module storage 'modules/storage.bicep' = {
   }
 }
 
-// Azure Functions (OAuth Proxy)
+module redis 'modules/redis.bicep' = {
+  name: 'redis'
+  params: {
+    name: 'redis-${resourceToken}'
+    location: location
+    tags: tags
+  }
+}
+
+module keyVault 'modules/key-vault.bicep' = {
+  name: 'key-vault'
+  params: {
+    name: 'kv-${resourceToken}'
+    location: location
+    tags: tags
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Private Endpoints — Storage (blob, queue, table), Key Vault, Redis
+// ---------------------------------------------------------------------------
+
+module storageBlobPe 'modules/private-endpoint.bicep' = {
+  name: 'pe-storage-blob'
+  params: {
+    name: 'pe-stblob-${resourceToken}'
+    location: location
+    tags: tags
+    subnetId: vnet.outputs.privateEndpointsSubnetId
+    privateLinkServiceId: storage.outputs.id
+    groupIds: ['blob']
+    privateDnsZoneId: dnsZones.outputs.blobDnsZoneId
+  }
+}
+
+module storageQueuePe 'modules/private-endpoint.bicep' = {
+  name: 'pe-storage-queue'
+  params: {
+    name: 'pe-stqueue-${resourceToken}'
+    location: location
+    tags: tags
+    subnetId: vnet.outputs.privateEndpointsSubnetId
+    privateLinkServiceId: storage.outputs.id
+    groupIds: ['queue']
+    privateDnsZoneId: dnsZones.outputs.queueDnsZoneId
+  }
+}
+
+module storageTablePe 'modules/private-endpoint.bicep' = {
+  name: 'pe-storage-table'
+  params: {
+    name: 'pe-sttable-${resourceToken}'
+    location: location
+    tags: tags
+    subnetId: vnet.outputs.privateEndpointsSubnetId
+    privateLinkServiceId: storage.outputs.id
+    groupIds: ['table']
+    privateDnsZoneId: dnsZones.outputs.tableDnsZoneId
+  }
+}
+
+module keyVaultPe 'modules/private-endpoint.bicep' = {
+  name: 'pe-key-vault'
+  params: {
+    name: 'pe-kv-${resourceToken}'
+    location: location
+    tags: tags
+    subnetId: vnet.outputs.privateEndpointsSubnetId
+    privateLinkServiceId: keyVault.outputs.id
+    groupIds: ['vault']
+    privateDnsZoneId: dnsZones.outputs.keyVaultDnsZoneId
+  }
+}
+
+module redisPe 'modules/private-endpoint.bicep' = {
+  name: 'pe-redis'
+  params: {
+    name: 'pe-redis-${resourceToken}'
+    location: location
+    tags: tags
+    subnetId: vnet.outputs.privateEndpointsSubnetId
+    privateLinkServiceId: redis.outputs.id
+    groupIds: ['redisCache']
+    privateDnsZoneId: dnsZones.outputs.redisDnsZoneId
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Compute — Azure Functions (OAuth Proxy)
+// ---------------------------------------------------------------------------
+
 module functionApp 'modules/function-app.bicep' = {
   name: 'function-app'
   params: {
@@ -80,13 +187,18 @@ module functionApp 'modules/function-app.bicep' = {
     appInsightsConnectionString: appInsights.outputs.connectionString
     keyVaultUri: keyVault.outputs.uri
     redisConnectionString: redis.outputs.connectionString
-    storageAccountConnectionString: storage.outputs.connectionString
+    storageAccountName: storage.outputs.name
     allowedRedirectHosts: allowedRedirectHosts
     allowedRedirectSchemes: 'djai'
+    functionsSubnetId: vnet.outputs.functionsSubnetId
   }
 }
 
-// Grant Function App access to Key Vault secrets
+// ---------------------------------------------------------------------------
+// Role Assignments — MI permissions for all inter-resource connectivity
+// ---------------------------------------------------------------------------
+
+// Function App MI → Key Vault (Key Vault Secrets User)
 module keyVaultAccess 'modules/key-vault-access.bicep' = {
   name: 'key-vault-access'
   params: {
@@ -95,8 +207,30 @@ module keyVaultAccess 'modules/key-vault-access.bicep' = {
   }
 }
 
-// Outputs for azd
+// Function App MI → Storage (Blob Data Owner + Account Contributor + Queue Data Contributor)
+module storageAccess 'modules/storage-access.bicep' = {
+  name: 'storage-access'
+  params: {
+    storageAccountName: storage.outputs.name
+    principalId: functionApp.outputs.principalId
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Outputs for azd (no secrets — only resource names and URLs)
+// ---------------------------------------------------------------------------
+
+@description('Name of the deployed Function App')
 output AZURE_FUNCTION_APP_NAME string = functionApp.outputs.name
+
+@description('URL of the deployed Function App')
 output AZURE_FUNCTION_APP_URL string = functionApp.outputs.url
+
+@description('Name of the Key Vault')
 output AZURE_KEY_VAULT_NAME string = keyVault.outputs.name
+
+@description('Name of the Redis cache')
 output AZURE_REDIS_NAME string = redis.outputs.name
+
+@description('Name of the VNet')
+output AZURE_VNET_NAME string = vnet.outputs.name

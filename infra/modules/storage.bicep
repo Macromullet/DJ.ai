@@ -1,5 +1,10 @@
+@description('Name of the storage account')
 param name string
+
+@description('Location for the storage account')
 param location string
+
+@description('Tags to apply to the storage account')
 param tags object
 
 resource storage 'Microsoft.Storage/storageAccounts@2023-05-01' = {
@@ -11,11 +16,18 @@ resource storage 'Microsoft.Storage/storageAccounts@2023-05-01' = {
   properties: {
     minimumTlsVersion: 'TLS1_2'
     supportsHttpsTrafficOnly: true
+    allowSharedKeyAccess: false
+    allowBlobPublicAccess: false
+    publicNetworkAccess: 'Disabled'
+    networkAcls: {
+      defaultAction: 'Deny'
+      bypass: 'AzureServices'
+    }
   }
 }
 
+@description('Name of the storage account')
 output name string = storage.name
 
-@description('Storage account connection string')
-#disable-next-line outputs-should-not-contain-secrets
-output connectionString string = 'DefaultEndpointsProtocol=https;AccountName=${storage.name};AccountKey=${storage.listKeys().keys[0].value};EndpointSuffix=${environment().suffixes.storage}'
+@description('Resource ID of the storage account')
+output id string = storage.id

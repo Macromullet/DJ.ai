@@ -68,6 +68,9 @@ oauth-proxy/local.settings.json
 electron-app/.env
 electron-app/.env.local
 
+# Bicep build artifacts (ARM JSON compiled from .bicep)
+infra/**/*.json
+
 # Node.js
 node_modules/
 

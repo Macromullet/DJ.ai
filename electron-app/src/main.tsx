@@ -10,8 +10,8 @@ import './styles/tokens.css';
 import './styles/base.css';
 import './styles/utilities.css';
 
-// Bootstrap the application
-bootstrapApp();
+// Bootstrap the application (async — loads API keys from encrypted storage)
+bootstrapApp().catch(console.error);
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

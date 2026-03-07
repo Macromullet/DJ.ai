@@ -3,17 +3,14 @@
 
 import { initializeTestMode } from './testMode';
 import { initializeProductionMode } from './productionMode';
+import { getApiKeys } from '../utils/secretStorage';
 
 /**
  * Bootstrap the application
- * Determines mode based on environment variable
- * 
- * SOLID Principles:
- * - Single Responsibility: Only bootstraps the app
- * - Open/Closed: Can add new modes without modifying
- * - Dependency Inversion: Uses DI container for all services
+ * Loads API keys from encrypted storage and settings from localStorage,
+ * then initializes services via DI container.
  */
-export function bootstrapApp() {
+export async function bootstrapApp() {
   try {
     // Check if test mode is requested via environment variable or query param
     const urlParams = new URLSearchParams(window.location.search);
@@ -27,9 +24,27 @@ export function bootstrapApp() {
       initializeTestMode();
     } else {
       console.log('🚀 Starting in PRODUCTION MODE');
-      // Default to YouTube for now
-      // TODO: Load from user settings
-      initializeProductionMode({ provider: 'youtube' });
+
+      // Load API keys from encrypted storage
+      const keys = await getApiKeys();
+
+      // Load saved settings from localStorage
+      const savedSettings = localStorage.getItem('djai-settings');
+      const settings = savedSettings ? JSON.parse(savedSettings) : {};
+
+      // Smart AI provider default: use whichever key the user has
+      const aiProvider = settings.aiProvider
+        || (keys.anthropicApiKey ? 'anthropic' : keys.openaiApiKey ? 'openai' : 'anthropic');
+
+      initializeProductionMode({
+        provider: settings.currentProvider || 'youtube',
+        ttsProvider: settings.ttsProvider || 'web-speech',
+        aiProvider,
+        openaiApiKey: keys.openaiApiKey,
+        anthropicApiKey: keys.anthropicApiKey,
+        geminiApiKey: keys.geminiApiKey,
+        elevenLabsApiKey: keys.elevenLabsApiKey,
+      });
     }
 
     console.log('✅ Application bootstrapped');

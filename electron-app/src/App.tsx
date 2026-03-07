@@ -49,8 +49,9 @@ function MainApp() {
       openaiApiKey: '',
       anthropicApiKey: '',
       elevenLabsApiKey: '',
+      geminiApiKey: '',
       ttsEnabled: false,
-      ttsProvider: 'openai',
+      ttsProvider: 'web-speech',
       ttsVoice: 'onyx',
       autoDJMode: false
     };
@@ -75,6 +76,7 @@ function MainApp() {
         openaiApiKey: secrets.openaiApiKey || prev.openaiApiKey,
         anthropicApiKey: secrets.anthropicApiKey || prev.anthropicApiKey,
         elevenLabsApiKey: secrets.elevenLabsApiKey || prev.elevenLabsApiKey,
+        geminiApiKey: secrets.geminiApiKey || prev.geminiApiKey,
       }));
     });
   }, []);
@@ -607,10 +609,11 @@ function MainApp() {
       openaiApiKey: newSettings.openaiApiKey,
       anthropicApiKey: newSettings.anthropicApiKey,
       elevenLabsApiKey: newSettings.elevenLabsApiKey,
+      geminiApiKey: newSettings.geminiApiKey,
     });
 
     // Strip secrets before writing the main settings blob
-    const { openaiApiKey: _o, anthropicApiKey: _a, elevenLabsApiKey: _e, ...safeSettings } = newSettings;
+    const { openaiApiKey: _o, anthropicApiKey: _a, elevenLabsApiKey: _e, geminiApiKey: _g, ...safeSettings } = newSettings;
     localStorage.setItem('djAiSettings', JSON.stringify(safeSettings));
     
     // Update current provider if API key changed
@@ -859,7 +862,6 @@ function MainApp() {
                 config={settings}
                 onSave={handleSettingsSave}
                 onClose={() => setShowSettings(false)}
-                copilotAvailable={false}
                 onConnectProvider={handleConnectProvider}
                 onDisconnectProvider={handleDisconnectProvider}
               />

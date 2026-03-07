@@ -14,7 +14,7 @@ export interface TTSVoice {
   name: string;
   language: string;
   gender?: 'male' | 'female';
-  provider: 'web-speech' | 'openai' | 'elevenlabs';
+  provider: 'web-speech' | 'openai' | 'elevenlabs' | 'gemini';
 }
 
 

@@ -346,6 +346,7 @@ const AI_API_ALLOWLIST = new Set([
   'api.openai.com',
   'api.anthropic.com',
   'generativelanguage.googleapis.com',
+  'api.elevenlabs.io',
 ]);
 
 ipcMain.handle('ai-api-request', async (event, { url, method, headers, body }) => {

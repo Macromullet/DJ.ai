@@ -18,4 +18,7 @@ resource redis 'Microsoft.Cache/redis@2023-08-01' = {
 }
 
 output name string = redis.name
+
+@description('Redis connection string')
+#disable-next-line outputs-should-not-contain-secrets
 output connectionString string = '${redis.properties.hostName}:${redis.properties.sslPort},password=${redis.listKeys().primaryKey},ssl=True,abortConnect=False'

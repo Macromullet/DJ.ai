@@ -6,8 +6,7 @@ param location string = resourceGroup().location
 @description('Environment name (dev, staging, prod)')
 param environmentName string
 
-@description('Comma-separated list of allowed OAuth redirect hosts for production (e.g., your-app.azurestaticapps.net).
-Set via: azd env set ALLOWED_REDIRECT_HOSTS <host1,host2>')
+@description('Comma-separated list of allowed OAuth redirect hosts for production. Set via: azd env set ALLOWED_REDIRECT_HOSTS host1,host2')
 param allowedRedirectHosts string = ''
 
 @description('Unique suffix for resource names')

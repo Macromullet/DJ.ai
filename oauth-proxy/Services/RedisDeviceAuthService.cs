@@ -313,6 +313,24 @@ public class RedisDeviceAuthService : IDeviceAuthService
             }
         }
 
+        // Sweep stale request histories for devices no longer active.
+        // Prevents unbounded memory growth during prolonged Redis outages.
+        if (_fallbackRequestHistory.Count > _fallbackDevices.Count * 2)
+        {
+            var staleHistoryCutoff = DateTime.UtcNow.AddHours(-24);
+            foreach (var key in _fallbackRequestHistory.Keys)
+            {
+                if (!_fallbackDevices.ContainsKey(key) &&
+                    _fallbackRequestHistory.TryGetValue(key, out var history))
+                {
+                    bool allExpired;
+                    lock (history) { allExpired = history.Count == 0 || history.All(r => (DateTime.UtcNow - r).TotalHours > 24); }
+                    if (allExpired)
+                        _fallbackRequestHistory.TryRemove(key, out _);
+                }
+            }
+        }
+
         _fallbackDevices.TryAdd(deviceToken, DateTime.UtcNow);
         return true;
     }

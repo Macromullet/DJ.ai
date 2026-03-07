@@ -696,19 +696,33 @@ function MainApp() {
   }, []);
 
   const handleSettingsSave = (newSettings: SettingsConfig) => {
-    setSettings(newSettings);
-
-    // Only save keys the user actually changed (non-empty and not 'configured' placeholder)
-    const keysToSave: Record<string, string> = {};
+    // Sanitize: replace plaintext keys with 'configured' placeholder before
+    // storing in React state — prevents keys lingering in memory/DevTools
+    const sanitized = { ...newSettings };
     const keyFields = ['openaiApiKey', 'anthropicApiKey', 'elevenLabsApiKey', 'geminiApiKey'] as const;
+    const keysToSave: Record<string, string> = {};
     for (const field of keyFields) {
-      const val = newSettings[field];
+      const val = sanitized[field];
       if (val && val !== 'configured') {
         keysToSave[field] = val;
+        sanitized[field] = 'configured';
       }
     }
+    setSettings(sanitized);
+
     if (Object.keys(keysToSave).length > 0) {
       void saveApiKeys(keysToSave);
+    }
+
+    // Also send empty-string deletions for keys the user explicitly cleared
+    const keysToDelete: Record<string, string> = {};
+    for (const field of keyFields) {
+      if (newSettings[field] === '') {
+        keysToDelete[field] = '';
+      }
+    }
+    if (Object.keys(keysToDelete).length > 0) {
+      void saveApiKeys(keysToDelete);
     }
 
     // Strip secrets before writing the main settings blob

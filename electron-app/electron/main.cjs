@@ -381,9 +381,9 @@ ipcMain.handle('save-api-keys', async (_event, keys) => {
   if (typeof keys !== 'object' || keys === null) {
     throw new Error('Invalid keys object');
   }
-  // Only update keys that are provided with non-empty values
   for (const [key, value] of Object.entries(keys)) {
-    if (key in apiKeyStore && typeof value === 'string' && value.length > 0) {
+    if (key in apiKeyStore && typeof value === 'string') {
+      // Non-empty string sets the key; empty string deletes it
       apiKeyStore[key] = value;
     }
   }

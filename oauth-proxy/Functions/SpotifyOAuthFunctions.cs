@@ -239,10 +239,22 @@ public class SpotifyOAuthFunctions
             var authBytes = System.Text.Encoding.UTF8.GetBytes($"{clientId}:{clientSecret}");
             var authHeader = Convert.ToBase64String(authBytes);
             
+            // Require redirect_uri — never fall back to a hardcoded default
+            if (string.IsNullOrEmpty(body.RedirectUri))
+            {
+                var errorResp2 = req.CreateResponse(System.Net.HttpStatusCode.BadRequest);
+                await errorResp2.WriteAsJsonAsync(new ErrorResponse 
+                { 
+                    Error = "InvalidRequest", 
+                    Message = "Missing redirectUri in exchange request" 
+                });
+                return errorResp2;
+            }
+
             var tokenRequest = new FormUrlEncodedContent(new[]
             {
                 new KeyValuePair<string, string>("code", body.Code),
-                new KeyValuePair<string, string>("redirect_uri", body.RedirectUri ?? "http://localhost:5173/oauth/callback"),
+                new KeyValuePair<string, string>("redirect_uri", body.RedirectUri),
                 new KeyValuePair<string, string>("grant_type", "authorization_code")
             });
 

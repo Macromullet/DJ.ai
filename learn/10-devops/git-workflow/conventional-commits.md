@@ -62,7 +62,7 @@ Commit: feat: add onboarding wizard with provider selection
 ### Real Examples from DJ.ai
 
 ```bash
-feat: implement YouTube Music OAuth flow
+feat: implement Spotify OAuth flow
 fix: handle expired token refresh in Electron IPC bridge
 docs: add DEV_SETUP.md with local development instructions
 refactor: migrate from inline styles to design token system

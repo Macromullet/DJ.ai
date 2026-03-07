@@ -94,4 +94,4 @@ app.on('open-url', (event, url) => {
 
 ## DJ.ai Connection
 
-DJ.ai registers the `djai://` protocol in `electron-app/electron/main.cjs` for OAuth redirect handling. When a user authenticates with YouTube, Spotify, or Apple Music, the OAuth provider redirects to `djai://oauth/callback?code=...&state=...`. The OS routes this to DJ.ai's main process, which extracts the authorization code and sends it to the React renderer via the `oauth-deep-link` IPC channel. The single instance lock ensures the existing app instance handles the callback. The OAuth popup window is automatically closed after the callback is received.
+DJ.ai registers the `djai://` protocol in `electron-app/electron/main.cjs` for OAuth redirect handling. When a user authenticates with Spotify or Apple Music, the OAuth provider redirects to `djai://oauth/callback?code=...&state=...`. The OS routes this to DJ.ai's main process, which extracts the authorization code and sends it to the React renderer via the `oauth-deep-link` IPC channel. The single instance lock ensures the existing app instance handles the callback. The OAuth popup window is automatically closed after the callback is received.

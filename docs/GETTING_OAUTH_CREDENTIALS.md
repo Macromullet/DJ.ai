@@ -11,53 +11,7 @@ For **local testing with real OAuth**, you need to get credentials from each pro
 
 ---
 
-## 1. Google OAuth (for YouTube Music)
-
-### Step 1: Create Google Cloud Project
-
-1. Go to [Google Cloud Console](https://console.cloud.google.com/)
-2. Click "Select a project" → "New Project"
-3. Name: `DJ.ai Local Dev` (or anything)
-4. Click "Create"
-
-### Step 2: Enable YouTube Data API
-
-1. In your new project, go to "APIs & Services" → "Library"
-2. Search for "YouTube Data API v3"
-3. Click it → Click "Enable"
-
-### Step 3: Create OAuth Credentials
-
-1. Go to "APIs & Services" → "Credentials"
-2. Click "Create Credentials" → "OAuth client ID"
-3. If prompted, configure consent screen:
-   - User Type: **External**
-   - App name: `DJ.ai Local Dev`
-   - User support email: Your email
-   - Developer contact: Your email
-   - Click "Save and Continue" through all screens
-4. Back to "Create OAuth client ID":
-   - Application type: **Web application**
-   - Name: `DJ.ai Local OAuth`
-   - Authorized redirect URIs:
-     - `http://localhost:5173/oauth/callback`
-     - `http://localhost:5174/oauth/callback`
-     - `http://localhost:5175/oauth/callback`
-     - `http://localhost:5176/oauth/callback`
-     - `http://localhost:5177/oauth/callback`
-   - Click "Create"
-
-### Step 4: Copy Credentials
-
-You'll see:
-- **Client ID**: Something like `123456789-abc...apps.googleusercontent.com`
-- **Client Secret**: Something like `GOCSPX-abc123...`
-
-**Save these!** You'll paste them into `local.settings.json`
-
----
-
-## 2. Spotify OAuth
+## 1. Spotify OAuth
 
 ### Step 1: Create Spotify App
 
@@ -89,11 +43,11 @@ You'll see:
 
 ---
 
-## 3. Apple Music (Optional - More Complex)
+## 2. Apple Music (Optional - More Complex)
 
 ### Requirements
 - Apple Developer Account ($99/year) **OR**
-- Skip Apple Music for now (Spotify + YouTube enough for testing)
+- Skip Apple Music for now (Spotify is enough for testing)
 
 ### If You Want Apple Music:
 
@@ -104,11 +58,11 @@ You'll see:
    - Download the `.p8` file
    - Note your **Team ID** and **Key ID**
 
-**For local dev, I recommend skipping Apple Music initially** - test with Spotify and YouTube first.
+**For local dev, I recommend skipping Apple Music initially** - test with Spotify first.
 
 ---
 
-## 4. Configure local.settings.json
+## 3. Configure local.settings.json
 
 ```bash
 cd oauth-proxy
@@ -130,9 +84,6 @@ notepad local.settings.json  # or vi, code, etc.
     "FUNCTIONS_WORKER_RUNTIME": "dotnet-isolated",
     "AZURE_FUNCTIONS_ENVIRONMENT": "Development",
     
-    "GoogleClientId": "123456789-abc.apps.googleusercontent.com",
-    "GoogleClientSecret": "GOCSPX-yourSecretHere",
-    
     "SpotifyClientId": "your32charspotifyclientid",
     "SpotifyClientSecret": "your32charspotifyclientsecret",
     
@@ -147,7 +98,7 @@ notepad local.settings.json  # or vi, code, etc.
 
 ---
 
-## 5. Test It Works
+## 4. Test It Works
 
 ```powershell
 # Start with real OAuth
@@ -163,15 +114,14 @@ func start --port 7071
 Functions:
   SpotifyOAuthInitiate: [POST] http://localhost:7071/api/oauth/spotify/initiate
   SpotifyOAuthExchange: [POST] http://localhost:7071/api/oauth/spotify/exchange
-  YouTubeOAuthInitiate: [POST] http://localhost:7071/api/oauth/youtube/initiate
   ...
 ```
 
 ### Test OAuth Flow:
 
 1. Open app: http://localhost:5173
-2. Click "Connect to Spotify" (or YouTube)
-3. Should redirect to real Spotify/Google login
+2. Click "Connect to Spotify" (or Apple Music)
+3. Should redirect to real Spotify login
 4. After login, should redirect back to app
 5. Should see "Connected" status
 
@@ -185,11 +135,6 @@ Functions:
 - Go to app settings → Redirect URIs
 - Make sure `http://localhost:5173/oauth/callback` is listed
 - Click "Save"
-
-**Google:**
-- Go to Credentials → Your OAuth Client
-- Edit → Authorized redirect URIs
-- Add all localhost ports (5173-5177)
 
 ### "Invalid client"
 
@@ -220,7 +165,7 @@ Functions:
 # Configure local.settings.json once (above)
 .\start-dev.ps1
 
-# Test Spotify or YouTube OAuth
+# Test Spotify or Apple Music OAuth
 ```
 
 ---
@@ -260,17 +205,15 @@ Functions:
 ## Summary
 
 **Minimum for local testing:**
-1. ✅ Get Google OAuth credentials (5 minutes)
-2. ✅ Get Spotify OAuth credentials (5 minutes)
-3. ✅ Paste into `local.settings.json`
-4. ✅ Run `.\start-dev.ps1`
-5. ✅ Test OAuth flows
+1. ✅ Get Spotify OAuth credentials (5 minutes)
+2. ✅ Paste into `local.settings.json`
+3. ✅ Run `.\start-dev.ps1`
+4. ✅ Test OAuth flows
 
-**Total setup time:** ~15 minutes
+**Total setup time:** ~10 minutes
 
 **Then you can:**
 - Test real Spotify playback
-- Test real YouTube playback
 - Verify OAuth security
 - Build confidence before Azure deployment
 

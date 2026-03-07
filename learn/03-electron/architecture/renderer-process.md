@@ -44,7 +44,6 @@ The renderer accesses main-process capabilities only through the preload-exposed
 ```typescript
 // In a React component (renderer process)
 const encrypted = await window.electron.safeStorage.encrypt(apiKey);
-const trackInfo = await window.electron.ytMusic.getTrack();
 ```
 
 These calls are transparently routed through IPC to the main process.
@@ -64,4 +63,4 @@ These calls are transparently routed through IPC to the main process.
 
 ## DJ.ai Connection
 
-DJ.ai's primary renderer process runs the entire React application from `electron-app/src/`. This includes the music player UI, settings panel, onboarding wizard, AI commentary display, and provider management. The React app uses `window.electron.ytMusic.*` for playback, `window.electron.aiProxy.*` for AI commentary, and `window.electron.safeStorage.*` for encrypting API keys — all of which are IPC calls to the main process, invisible to the React code. A second renderer process runs the hidden YouTube Music window with its own preload script (`ytmusic-preload.cjs`).
+DJ.ai's primary renderer process runs the entire React application from `electron-app/src/`. This includes the music player UI, settings panel, onboarding wizard, AI commentary display, and provider management. The React app uses `window.electron.aiProxy.*` for AI commentary and `window.electron.safeStorage.*` for encrypting API keys — all of which are IPC calls to the main process, invisible to the React code.

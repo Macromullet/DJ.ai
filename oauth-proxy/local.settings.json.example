@@ -5,9 +5,6 @@
     "FUNCTIONS_WORKER_RUNTIME": "dotnet-isolated",
     "AZURE_FUNCTIONS_ENVIRONMENT": "Development",
     
-    "GoogleClientId": "PASTE_YOUR_GOOGLE_CLIENT_ID_HERE",
-    "GoogleClientSecret": "PASTE_YOUR_GOOGLE_CLIENT_SECRET_HERE",
-    
     "SpotifyClientId": "PASTE_YOUR_SPOTIFY_CLIENT_ID_HERE",
     "SpotifyClientSecret": "PASTE_YOUR_SPOTIFY_CLIENT_SECRET_HERE",
     

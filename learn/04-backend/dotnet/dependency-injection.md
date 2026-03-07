@@ -71,14 +71,14 @@ Functions receive `ISecretService` and don't know which implementation they're u
 Azure Function classes receive dependencies via constructor parameters:
 
 ```csharp
-public class YouTubeOAuthFunctions
+public class SpotifyOAuthFunctions
 {
     private readonly ISecretService _secretService;
     private readonly IDeviceAuthService _deviceAuthService;
     private readonly IValidationService _validationService;
     private readonly IStateStoreService _stateStore;
 
-    public YouTubeOAuthFunctions(
+    public SpotifyOAuthFunctions(
         ISecretService secretService,
         IDeviceAuthService deviceAuthService,
         IValidationService validationService,
@@ -106,4 +106,4 @@ public class YouTubeOAuthFunctions
 
 ## DJ.ai Connection
 
-All service wiring happens in `oauth-proxy/Program.cs`. Every Azure Function class (`YouTubeOAuthFunctions`, `SpotifyOAuthFunctions`, `AppleMusicOAuthFunctions`) receives four injected services: `ISecretService` for client secrets, `IDeviceAuthService` for rate limiting, `IValidationService` for input validation, and `IStateStoreService` for CSRF state management. The conditional registration pattern means developers can run the full stack locally with `dotnet user-secrets` without needing Azure Key Vault access.
+All service wiring happens in `oauth-proxy/Program.cs`. Every Azure Function class (`SpotifyOAuthFunctions`, `AppleMusicOAuthFunctions`) receives four injected services: `ISecretService` for client secrets, `IDeviceAuthService` for rate limiting, `IValidationService` for input validation, and `IStateStoreService` for CSRF state management. The conditional registration pattern means developers can run the full stack locally with `dotnet user-secrets` without needing Azure Key Vault access.

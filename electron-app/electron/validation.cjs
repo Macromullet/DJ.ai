@@ -8,7 +8,6 @@ const AI_API_ALLOWLIST = new Set([
 ]);
 
 const ALLOWED_OAUTH_HOSTS = new Set([
-  'accounts.google.com',
   'accounts.spotify.com',
   'appleid.apple.com',
   'authorize.music.apple.com',
@@ -102,12 +101,11 @@ function isValidPlaybackAction(action) {
 function buildCSP() {
   return (
     "default-src 'self'; " +
-    "script-src 'self' 'unsafe-inline' https://www.youtube.com https://s.ytimg.com https://sdk.scdn.co https://apisdk.scdn.co https://js-cdn.music.apple.com; " +
+    "script-src 'self' 'unsafe-inline' https://sdk.scdn.co https://apisdk.scdn.co https://js-cdn.music.apple.com; " +
     "style-src 'self' 'unsafe-inline'; " +
     "img-src 'self' data: https: http:; " +
     "media-src 'self' https:; " +
-    "connect-src 'self' http://localhost:* https://*.azurewebsites.net https://*.azurestaticapps.net https://api.openai.com https://api.anthropic.com https://www.googleapis.com https://generativelanguage.googleapis.com https://accounts.google.com https://api.spotify.com https://accounts.spotify.com https://apisdk.scdn.co https://api.music.apple.com https://authorize.music.apple.com https://api.elevenlabs.io; " +
-    "frame-src https://www.youtube.com https://music.youtube.com;"
+    "connect-src 'self' http://localhost:* https://*.azurewebsites.net https://*.azurestaticapps.net https://api.openai.com https://api.anthropic.com https://generativelanguage.googleapis.com https://api.spotify.com https://accounts.spotify.com https://apisdk.scdn.co https://api.music.apple.com https://authorize.music.apple.com https://api.elevenlabs.io;"
   );
 }
 
@@ -166,20 +164,6 @@ function isAllowedExternalProtocol(url) {
   }
 }
 
-/**
- * Check whether a URL is a valid YouTube Music URL.
- * @param {string} url
- * @returns {boolean}
- */
-function isValidYouTubeMusicUrl(url) {
-  try {
-    const parsed = new URL(url);
-    return parsed.protocol === 'https:' && parsed.hostname === 'music.youtube.com';
-  } catch {
-    return false;
-  }
-}
-
 module.exports = {
   isAllowedAIHost,
   isValidRedirectUri,
@@ -190,7 +174,6 @@ module.exports = {
   isOAuthCallback,
   isDjaiOAuthCallback,
   isAllowedExternalProtocol,
-  isValidYouTubeMusicUrl,
   AI_API_ALLOWLIST,
   ALLOWED_OAUTH_HOSTS,
   VALID_PLAYBACK_ACTIONS,

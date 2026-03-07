@@ -76,4 +76,4 @@ ipcMain.handle('safe-storage-encrypt', (event, plaintext) => {
 
 ## DJ.ai Connection
 
-DJ.ai's main process (`electron-app/electron/main.cjs`) manages three window types. The primary window loads the React app at `localhost:5173` during development. A hidden YouTube Music window provides actual playback. OAuth popup windows open for provider authentication. The main process also registers 15+ IPC handlers for AI requests, safe storage, playback control, notifications, and tray updates — making it the central nervous system of the application.
+DJ.ai's main process (`electron-app/electron/main.cjs`) manages window creation and IPC. The primary window loads the React app at `localhost:5173` during development. OAuth popup windows open for provider authentication. The main process also registers 15+ IPC handlers for AI requests, safe storage, playback control, notifications, and tray updates — making it the central nervous system of the application.

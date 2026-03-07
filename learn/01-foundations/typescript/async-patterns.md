@@ -145,7 +145,7 @@ const [recs, tops] = await Promise.all([
 
 - **`electron-app/src/types/IMusicProvider.ts`** — Every method returns `Promise<T>`: `searchTracks()` → `Promise<SearchResult[]>`, `authenticate()` → `Promise<AuthenticationResult>`, `playTrack()` → `Promise<string>`
 - **`electron-app/src/App.tsx`** — All event handlers are async with try/catch error handling; uses `finally` blocks for loading state cleanup
-- **`electron-app/src/providers/YouTubeMusicProvider.ts`** — Token refresh logic uses async/await with retry patterns
+- **`electron-app/src/providers/SpotifyProvider.ts`** — Token refresh logic uses async/await with retry patterns
 - **`electron-app/src/services/AICommentaryService.ts`** — Async commentary generation with in-memory caching; pre-generation uses `renderToBlob` for seamless transitions
 - **`electron-app/src/components/OAuthCallback.tsx`** — Async OAuth code exchange in a `useEffect` hook
 

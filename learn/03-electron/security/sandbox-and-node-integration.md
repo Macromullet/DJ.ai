@@ -74,4 +74,4 @@ Removing any one layer weakens the others. This is why Electron's security docum
 
 ## DJ.ai Connection
 
-DJ.ai configures all three security settings on every window created in `electron-app/electron/main.cjs`. The main app window, YouTube Music window, and OAuth popup windows all have `nodeIntegration: false` and `contextIsolation: true`. This is especially critical for the YouTube Music window (loads third-party content from `music.youtube.com`) and OAuth windows (load content from Google, Spotify, and Apple identity servers). Even if any of these external sites were compromised, the attacker cannot escape the renderer sandbox.
+DJ.ai configures all three security settings on every window created in `electron-app/electron/main.cjs`. The main app window and OAuth popup windows all have `nodeIntegration: false` and `contextIsolation: true`. This is especially critical for OAuth windows (which load content from Spotify and Apple identity servers). Even if any of these external sites were compromised, the attacker cannot escape the renderer sandbox.

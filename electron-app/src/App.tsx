@@ -37,7 +37,7 @@ function MainApp() {
   
   const [settings, setSettings] = useState<SettingsConfig>(() => {
     const defaults: SettingsConfig = {
-      currentProvider: isTestMode() ? 'apple' : 'apple',
+      currentProvider: 'apple',
       providers: {
         spotify: { isConnected: false },
         apple: { isConnected: isTestMode() }
@@ -552,8 +552,11 @@ function MainApp() {
     console.log('Auth result:', authResult);
     
     if (authResult.success) {
+      // Set as active provider so search/play work immediately (no reload needed)
+      currentProvider.current = provider;
       setSettings(prev => ({
         ...prev,
+        currentProvider: providerName,
         providers: {
           ...prev.providers,
           [providerName]: {
@@ -620,8 +623,11 @@ function MainApp() {
     if (provider) {
       const success = await provider.handleOAuthCallback(callbackUrl);
       if (success) {
+        // Set as active provider so search/play work immediately (no reload needed)
+        currentProvider.current = provider;
         setSettings(prev => ({
           ...prev,
+          currentProvider: providerName as 'spotify' | 'apple',
           providers: {
             ...prev.providers,
             [providerName]: { isConnected: true }

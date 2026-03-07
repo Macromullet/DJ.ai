@@ -4,7 +4,6 @@
     "logLevel": {
       "default": "Warning",
       "Function": "Information",
-      "Function.YouTubeOAuthFunctions": "Information",
       "Function.SpotifyOAuthFunctions": "Information",
       "Function.AppleMusicOAuthFunctions": "Information",
       "Function.HealthCheck": "Information"

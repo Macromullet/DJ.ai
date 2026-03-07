@@ -7,17 +7,17 @@ HTTP triggers turn Azure Functions into HTTP endpoints — they respond to GET, 
 ## Defining an HTTP Function
 
 ```csharp
-public class YouTubeOAuthFunctions
+public class SpotifyOAuthFunctions
 {
     private readonly ISecretService _secretService;
     private readonly IDeviceAuthService _deviceAuthService;
     private readonly IValidationService _validationService;
     private readonly IStateStoreService _stateStore;
 
-    [Function("YouTubeOAuthInitiate")]
-    public async Task<HttpResponseData> InitiateYouTubeOAuth(
+    [Function("SpotifyOAuthInitiate")]
+    public async Task<HttpResponseData> InitiateSpotifyOAuth(
         [HttpTrigger(AuthorizationLevel.Anonymous, "post",
-            Route = "oauth/youtube/initiate")]
+            Route = "oauth/spotify/initiate")]
         HttpRequestData req)
     {
         // Validate device token
@@ -41,14 +41,14 @@ public class YouTubeOAuthFunctions
             return TooManyRequestsResponse(req);
 
         // Fetch client ID from Key Vault
-        var clientId = await _secretService.GetSecretAsync("GoogleClientId");
+        var clientId = await _secretService.GetSecretAsync("SpotifyClientId");
 
         // Generate and store CSRF state
         var state = Guid.NewGuid().ToString();
         await _stateStore.StoreStateAsync(state, deviceToken);
 
         // Build auth URL
-        var authUrl = BuildGoogleAuthUrl(clientId, body.RedirectUri, state);
+        var authUrl = BuildSpotifyAuthUrl(clientId, body.RedirectUri, state);
 
         var response = req.CreateResponse(HttpStatusCode.OK);
         await response.WriteAsJsonAsync(new OAuthInitiateResponse
@@ -67,10 +67,10 @@ The `Route` property defines URL patterns with optional parameters:
 
 ```csharp
 // Static route
-[HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "oauth/youtube/initiate")]
+[HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "oauth/spotify/initiate")]
 
 // The /api/ prefix is automatic (configurable in host.json)
-// Full URL: POST /api/oauth/youtube/initiate
+// Full URL: POST /api/oauth/spotify/initiate
 ```
 
 ## Request and Response
@@ -121,4 +121,4 @@ DJ.ai uses `Anonymous` because it implements its own device token authentication
 
 ## DJ.ai Connection
 
-DJ.ai defines 10 HTTP-triggered functions across three provider files in `oauth-proxy/Functions/`: YouTube (initiate/exchange/refresh), Spotify (initiate/exchange/refresh), Apple Music (initiate/developer-token/validate), and a health check. Every OAuth function follows the same pattern: validate device token → check rate limit → validate inputs → fetch secrets → call provider → return tokens. This consistency makes the codebase easy to extend when adding new providers.
+DJ.ai defines HTTP-triggered functions across provider files in `oauth-proxy/Functions/`: Spotify (initiate/exchange/refresh), Apple Music (initiate/developer-token/validate), and a health check. Every OAuth function follows the same pattern: validate device token → check rate limit → validate inputs → fetch secrets → call provider → return tokens. This consistency makes the codebase easy to extend when adding new providers.

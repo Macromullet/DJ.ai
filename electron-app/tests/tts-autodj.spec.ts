@@ -11,11 +11,10 @@ test.describe('DJ.ai TTS and Auto-DJ Mode', () => {
     // Set settings directly in localStorage (bypass UI)
     await page.evaluate(() => {
       const settings = {
-        currentProvider: 'youtube',
+        currentProvider: 'apple',
         providers: {
-          youtube: { isConnected: true },
           spotify: { isConnected: false },
-          apple: { isConnected: false }
+          apple: { isConnected: true }
         },
         aiProvider: 'openai',
         openaiApiKey: '',
@@ -46,11 +45,10 @@ test.describe('DJ.ai TTS and Auto-DJ Mode', () => {
     // Set settings via localStorage
     await page.evaluate(() => {
       const settings = {
-        currentProvider: 'youtube',
+        currentProvider: 'apple',
         providers: {
-          youtube: { isConnected: true },
           spotify: { isConnected: false },
-          apple: { isConnected: false }
+          apple: { isConnected: true }
         },
         aiProvider: 'openai',
         openaiApiKey: '',

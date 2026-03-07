@@ -104,7 +104,6 @@ string Categorize(OAuthTokenResponse token) => token switch
 string GetProviderEndpoint(string provider) => provider switch
 {
     "spotify" => "https://accounts.spotify.com/api/token",
-    "youtube" => "https://oauth2.googleapis.com/token",
     "apple"   => "https://appleid.apple.com/auth/token",
     _ => throw new ArgumentException($"Unknown provider: {provider}")
 };

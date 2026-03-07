@@ -23,7 +23,7 @@ var client = new SecretClient(
 );
 
 // Retrieve a secret
-KeyVaultSecret secret = await client.GetSecretAsync("GoogleClientSecret");
+KeyVaultSecret secret = await client.GetSecretAsync("SpotifyClientSecret");
 string value = secret.Value;
 ```
 
@@ -56,8 +56,6 @@ The 1-hour TTL balances freshness with performance — secrets rarely change, bu
 
 | Secret Name | Purpose |
 |-------------|---------|
-| `GoogleClientId` | YouTube OAuth client ID |
-| `GoogleClientSecret` | YouTube OAuth client secret |
 | `SpotifyClientId` | Spotify OAuth client ID |
 | `SpotifyClientSecret` | Spotify OAuth client secret |
 | `AppleMusicTeamId` | Apple Developer Team ID |
@@ -79,4 +77,4 @@ The 1-hour TTL balances freshness with performance — secrets rarely change, bu
 
 ## DJ.ai Connection
 
-DJ.ai's `KeyVaultSecretService` in `oauth-proxy/Services/` wraps the `SecretClient` with `IMemoryCache` for 1-hour TTL caching. The `SecretClient` is registered in `oauth-proxy/Program.cs` only when running in production (not local development). The Key Vault URL comes from configuration (`KeyVaultUrl`), and authentication uses `DefaultAzureCredential` which automatically picks up the system-assigned Managed Identity in Azure. The `HealthCheckFunction` verifies Key Vault connectivity by attempting to read the `GoogleClientId` secret.
+DJ.ai's `KeyVaultSecretService` in `oauth-proxy/Services/` wraps the `SecretClient` with `IMemoryCache` for 1-hour TTL caching. The `SecretClient` is registered in `oauth-proxy/Program.cs` only when running in production (not local development). The Key Vault URL comes from configuration (`KeyVaultUrl`), and authentication uses `DefaultAzureCredential` which automatically picks up the system-assigned Managed Identity in Azure. The `HealthCheckFunction` verifies Key Vault connectivity by attempting to read the `SpotifyClientId` secret.

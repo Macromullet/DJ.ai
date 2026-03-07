@@ -1,10 +1,9 @@
 const { app, BrowserWindow, ipcMain, shell, safeStorage, Notification, Tray, Menu, nativeImage, globalShortcut } = require('electron');
 const path = require('path');
-const { isAllowedAIHost, isValidRedirectUri, isAllowedOAuthHost, isTTSResponseWithinLimit, isValidPlaybackAction, buildCSP, isOAuthCallback, isDjaiOAuthCallback, isAllowedExternalProtocol, isValidYouTubeMusicUrl } = require('./validation.cjs');
+const { isAllowedAIHost, isValidRedirectUri, isAllowedOAuthHost, isTTSResponseWithinLimit, isValidPlaybackAction, buildCSP, isOAuthCallback, isDjaiOAuthCallback, isAllowedExternalProtocol } = require('./validation.cjs');
 const { spawn } = require('child_process');
 
 let mainWindow = null;
-let ytMusicWindow = null;
 let oauthWindow = null;
 let tray = null;
 let currentTrackInfo = { title: 'DJ.ai', artist: '' };
@@ -96,49 +95,7 @@ function createWindow() {
 
   mainWindow.on('closed', () => {
     mainWindow = null;
-    if (ytMusicWindow) ytMusicWindow.close();
   });
-}
-
-function createYouTubeMusicWindow() {
-  if (ytMusicWindow) {
-    return ytMusicWindow;
-  }
-
-  ytMusicWindow = new BrowserWindow({
-    width: 1000,
-    height: 700,
-    backgroundColor: '#000',
-    webPreferences: {
-      nodeIntegration: false,
-      contextIsolation: true,
-      preload: path.join(__dirname, 'ytmusic-preload.cjs')
-    },
-    title: 'YouTube Music Player',
-    show: false
-  });
-
-  ytMusicWindow.loadURL('https://music.youtube.com');
-
-  // Show dev tools in development
-  if (isDev) {
-    ytMusicWindow.webContents.openDevTools();
-  }
-
-  ytMusicWindow.webContents.setWindowOpenHandler(({ url }) => {
-    if (isAllowedExternalProtocol(url)) {
-      shell.openExternal(url);
-    } else {
-      console.warn(`Blocked openExternal for disallowed protocol: ${url}`);
-    }
-    return { action: 'deny' };
-  });
-
-  ytMusicWindow.on('closed', () => {
-    ytMusicWindow = null;
-  });
-
-  return ytMusicWindow;
 }
 
 // System tray
@@ -206,127 +163,6 @@ function registerMediaKeys() {
 }
 
 // Playback action validation uses isValidPlaybackAction from validation.cjs
-
-// IPC Handlers for YouTube Music control
-ipcMain.handle('yt-music-play-url', async (event, url) => {
-  if (!url || !isValidYouTubeMusicUrl(url)) {
-    return { success: false, error: 'Invalid YouTube Music URL' };
-  }
-
-  if (!ytMusicWindow) {
-    createYouTubeMusicWindow();
-  }
-  
-  ytMusicWindow.loadURL(url);
-  ytMusicWindow.show();
-  return true;
-});
-
-ipcMain.handle('yt-music-control', async (event, action) => {
-  if (!ytMusicWindow) {
-    return false;
-  }
-
-  if (!isValidPlaybackAction(action)) {
-    console.error('Invalid YT Music control action:', action);
-    return false;
-  }
-
-  // Map validated actions to pre-built safe code snippets
-  const actionScripts = {
-    play: `(function() { const btn = document.querySelector('#play-pause-button'); if (btn) { btn.click(); return true; } return false; })();`,
-    pause: `(function() { const btn = document.querySelector('#play-pause-button'); if (btn) { btn.click(); return true; } return false; })();`,
-    next: `(function() { const btn = document.querySelector('.next-button'); if (btn) { btn.click(); return true; } return false; })();`,
-    previous: `(function() { const btn = document.querySelector('.previous-button'); if (btn) { btn.click(); return true; } return false; })();`
-  };
-
-  try {
-    const result = await ytMusicWindow.webContents.executeJavaScript(actionScripts[action]);
-    return result;
-  } catch (error) {
-    console.error('YT Music control error:', error);
-    return false;
-  }
-});
-
-ipcMain.handle('yt-music-get-track', async (event) => {
-  if (!ytMusicWindow) {
-    return null;
-  }
-
-  try {
-    const track = await ytMusicWindow.webContents.executeJavaScript(`
-      (function() {
-        const title = document.querySelector('.title.style-scope.ytmusic-player-bar')?.innerText;
-        const artist = document.querySelector('.byline.style-scope.ytmusic-player-bar')?.innerText;
-        const thumbnail = document.querySelector('#song-image img')?.src;
-        
-        if (title) {
-          return { title, artist, thumbnail };
-        }
-        return null;
-      })();
-    `);
-    return track;
-  } catch (error) {
-    console.error('Get track error:', error);
-    return null;
-  }
-});
-
-ipcMain.handle('yt-music-show', async (event) => {
-  if (!ytMusicWindow) {
-    createYouTubeMusicWindow();
-  }
-  ytMusicWindow.show();
-  return true;
-});
-
-ipcMain.handle('yt-music-hide', async (event) => {
-  if (ytMusicWindow) {
-    ytMusicWindow.hide();
-  }
-  return true;
-});
-
-ipcMain.handle('yt-music-search', async (event, query) => {
-  if (!ytMusicWindow) {
-    createYouTubeMusicWindow();
-  }
-
-  // Safely escape query for JavaScript interpolation
-  const safeQuery = JSON.stringify(query);
-
-  try {
-    await ytMusicWindow.webContents.executeJavaScript(`
-      (function() {
-        const searchBox = document.querySelector('ytmusic-search-box');
-        if (searchBox) {
-          searchBox.click();
-          setTimeout(() => {
-            const input = document.querySelector('#input.ytmusic-search-box');
-            if (input) {
-              input.value = ${safeQuery};
-              input.dispatchEvent(new Event('input', { bubbles: true }));
-              const form = input.closest('form');
-              if (form) {
-                form.dispatchEvent(new Event('submit', { bubbles: true }));
-              }
-            }
-          }, 200);
-          return true;
-        }
-        return false;
-      })();
-    `);
-    
-    ytMusicWindow.show();
-    return true;
-  } catch (error) {
-    console.error('Search error:', error);
-    return false;
-  }
-});
 
 // OAuth Window Handler
 ipcMain.handle('open-oauth-window', async (event, { url, redirectUri }) => {
@@ -481,10 +317,10 @@ ipcMain.handle('safe-storage-encrypt', (event, plaintext) => {
 // SECURITY NOTE: Exposing a general-purpose decrypt IPC means that any XSS in
 // the renderer can exfiltrate all stored API keys. The ideal fix is to remove
 // this endpoint entirely and have the main process attach keys internally (see
-// ai-api-request handler). Until that refactor, rate-limit calls to mitigate
-// automated exfiltration.
+// ai-api-request handler). Until that refactor, rate-limit calls and log
+// attempts to mitigate automated exfiltration.
 const decryptCallTimestamps = [];
-const DECRYPT_MAX_CALLS = 10;
+const DECRYPT_MAX_CALLS = 5;
 const DECRYPT_WINDOW_MS = 60_000; // 1 minute
 
 // Desktop notifications
@@ -513,10 +349,11 @@ ipcMain.handle('safe-storage-decrypt', (event, encrypted) => {
     decryptCallTimestamps.shift();
   }
   if (decryptCallTimestamps.length >= DECRYPT_MAX_CALLS) {
-    console.error('safe-storage-decrypt rate limit exceeded');
-    throw new Error('Rate limit exceeded for decryption — max 10 calls per minute');
+    console.error('safe-storage-decrypt rate limit exceeded — possible exfiltration attempt');
+    throw new Error('Rate limit exceeded for decryption — max 5 calls per minute');
   }
   decryptCallTimestamps.push(now);
+  console.warn(`safe-storage-decrypt called (${decryptCallTimestamps.length}/${DECRYPT_MAX_CALLS} in window)`);
 
   const buffer = Buffer.from(encrypted, 'base64');
   return safeStorage.decryptString(buffer);
@@ -526,7 +363,7 @@ app.whenReady().then(() => {
   const { session } = require('electron');
   session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
     // Only apply CSP to the main app window — skip third-party origins
-    // (YouTube Music, Google OAuth, Spotify OAuth need their own scripts)
+    // (Google OAuth, Spotify OAuth need their own scripts)
     try {
       const url = new URL(details.url);
       const isMainApp = url.hostname === 'localhost' || url.protocol === 'file:';
@@ -548,7 +385,6 @@ app.whenReady().then(() => {
   });
 
   createWindow();
-  createYouTubeMusicWindow();
   createTray();
   registerMediaKeys();
 });

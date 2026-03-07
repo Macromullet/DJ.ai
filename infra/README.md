@@ -29,8 +29,6 @@ azd up
 After deployment, add your provider secrets:
 ```bash
 VAULT_NAME=$(azd env get-value AZURE_KEY_VAULT_NAME)
-az keyvault secret set --vault-name $VAULT_NAME --name GoogleClientId --value "YOUR_CLIENT_ID"
-az keyvault secret set --vault-name $VAULT_NAME --name GoogleClientSecret --value "YOUR_SECRET"
 az keyvault secret set --vault-name $VAULT_NAME --name SpotifyClientId --value "YOUR_CLIENT_ID"
 az keyvault secret set --vault-name $VAULT_NAME --name SpotifyClientSecret --value "YOUR_SECRET"
 ```

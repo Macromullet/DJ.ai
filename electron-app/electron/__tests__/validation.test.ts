@@ -169,10 +169,10 @@ describe('isValidRedirectUri', () => {
 // isAllowedOAuthHost
 // ---------------------------------------------------------------------------
 describe('isAllowedOAuthHost', () => {
-  it('should allow accounts.google.com', () => {
+  it('should NOT allow accounts.google.com (YouTube removed)', () => {
     expect(
       validation.isAllowedOAuthHost('https://accounts.google.com/o/oauth2/v2/auth'),
-    ).toBe(true)
+    ).toBe(false)
   })
 
   it('should allow accounts.spotify.com', () => {
@@ -190,7 +190,7 @@ describe('isAllowedOAuthHost', () => {
   })
 
   it('should reject http (non-HTTPS)', () => {
-    expect(validation.isAllowedOAuthHost('http://accounts.google.com/o/oauth2/v2/auth')).toBe(
+    expect(validation.isAllowedOAuthHost('http://accounts.spotify.com/authorize')).toBe(
       false,
     )
   })
@@ -199,9 +199,9 @@ describe('isAllowedOAuthHost', () => {
     expect(validation.isAllowedOAuthHost('https://evil-oauth.com/authorize')).toBe(false)
   })
 
-  it('should reject subdomain spoofing (accounts.google.com.evil.com)', () => {
+  it('should reject subdomain spoofing (accounts.spotify.com.evil.com)', () => {
     expect(
-      validation.isAllowedOAuthHost('https://accounts.google.com.evil.com/o/oauth2/v2/auth'),
+      validation.isAllowedOAuthHost('https://accounts.spotify.com.evil.com/authorize'),
     ).toBe(false)
   })
 
@@ -213,14 +213,14 @@ describe('isAllowedOAuthHost', () => {
   // Userinfo credential-smuggling on OAuth host
   it('should reject userinfo bypass on OAuth host', () => {
     expect(
-      validation.isAllowedOAuthHost('https://user:pass@accounts.google.com/o/oauth2'),
+      validation.isAllowedOAuthHost('https://user:pass@accounts.spotify.com/authorize'),
     ).toBe(false)
   })
 
   // Non-standard port on OAuth host
   it('should reject non-standard port on OAuth host', () => {
     expect(
-      validation.isAllowedOAuthHost('https://accounts.google.com:8443/o/oauth2'),
+      validation.isAllowedOAuthHost('https://accounts.spotify.com:8443/authorize'),
     ).toBe(false)
   })
 })
@@ -315,13 +315,13 @@ describe('buildCSP', () => {
   })
 
   it('should include connect-src for OAuth hosts', () => {
-    expect(csp).toContain('https://accounts.google.com')
     expect(csp).toContain('https://accounts.spotify.com')
     expect(csp).toContain('https://api.music.apple.com')
+    expect(csp).not.toContain('https://accounts.google.com')
   })
 
-  it('should include frame-src for YouTube', () => {
-    expect(csp).toContain('frame-src https://www.youtube.com https://music.youtube.com')
+  it('should not include frame-src for YouTube (removed)', () => {
+    expect(csp).not.toContain('youtube.com')
   })
 
   it('should include connect-src localhost wildcard', () => {
@@ -511,48 +511,6 @@ describe('isAllowedExternalProtocol', () => {
 })
 
 // ---------------------------------------------------------------------------
-// isValidYouTubeMusicUrl
-// ---------------------------------------------------------------------------
-describe('isValidYouTubeMusicUrl', () => {
-  it('should allow music.youtube.com', () => {
-    expect(
-      validation.isValidYouTubeMusicUrl('https://music.youtube.com/watch?v=abc123'),
-    ).toBe(true)
-  })
-
-  it('should allow music.youtube.com root', () => {
-    expect(validation.isValidYouTubeMusicUrl('https://music.youtube.com/')).toBe(true)
-  })
-
-  it('should reject www.youtube.com (not music)', () => {
-    expect(
-      validation.isValidYouTubeMusicUrl('https://www.youtube.com/watch?v=abc123'),
-    ).toBe(false)
-  })
-
-  it('should reject http (must be HTTPS)', () => {
-    expect(validation.isValidYouTubeMusicUrl('http://music.youtube.com/')).toBe(false)
-  })
-
-  it('should reject music.youtube.com.evil.com', () => {
-    expect(
-      validation.isValidYouTubeMusicUrl('https://music.youtube.com.evil.com/watch'),
-    ).toBe(false)
-  })
-
-  it('should reject evil.com with path spoofing', () => {
-    expect(
-      validation.isValidYouTubeMusicUrl('https://evil.com/music.youtube.com/'),
-    ).toBe(false)
-  })
-
-  it('should handle invalid URLs', () => {
-    expect(validation.isValidYouTubeMusicUrl('')).toBe(false)
-    expect(validation.isValidYouTubeMusicUrl('not-a-url')).toBe(false)
-  })
-})
-
-// ---------------------------------------------------------------------------
 // Exported constants smoke checks
 // ---------------------------------------------------------------------------
 describe('exported constants', () => {
@@ -564,7 +522,7 @@ describe('exported constants', () => {
     expect(validation.AI_API_ALLOWLIST.size).toBe(4)
   })
 
-  it('ALLOWED_OAUTH_HOSTS should have 4 entries', () => {
-    expect(validation.ALLOWED_OAUTH_HOSTS.size).toBe(4)
+  it('ALLOWED_OAUTH_HOSTS should have 3 entries', () => {
+    expect(validation.ALLOWED_OAUTH_HOSTS.size).toBe(3)
   })
 })

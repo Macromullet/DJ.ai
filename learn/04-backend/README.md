@@ -2,7 +2,7 @@
 
 ## Overview
 
-DJ.ai's backend is intentionally minimal: it handles **only OAuth token operations**. All music API calls go directly from the Electron app to music providers (YouTube, Spotify, Apple Music). The backend exists solely because OAuth requires **client secrets** that must never be exposed to client code.
+DJ.ai's backend is intentionally minimal: it handles **only OAuth token operations**. All music API calls go directly from the Electron app to music providers (Spotify and Apple Music). The backend exists solely because OAuth requires **client secrets** that must never be exposed to client code.
 
 The backend stack:
 - **.NET 8** — runtime and SDK
@@ -18,9 +18,9 @@ The backend stack:
 │  Electron App   │ ──────────────────► │  Azure Functions   │
 │  (React)        │                     │  (oauth-proxy)     │
 │                 │  ◄── tokens ─────── │                    │
-│  Direct API ────┼──► YouTube API      │  ┌──────────────┐ │
-│  calls using    │  ► Spotify API      │  │  Key Vault   │ │
-│  OAuth tokens   │  ► Apple Music      │  │  (secrets)   │ │
+│  Direct API ────┼──► Spotify API      │  ┌──────────────┐ │
+│  calls using    │  ► Apple Music      │  │  Key Vault   │ │
+│  OAuth tokens   │                     │  │  (secrets)   │ │
 │                 │                     │  └──────────────┘ │
 └─────────────────┘                     │  ┌──────────────┐ │
                                         │  │    Redis     │ │
@@ -47,7 +47,7 @@ The backend stack:
 | `/api/oauth/{provider}/refresh` | POST | Refresh expired access token |
 | `/api/health` | GET | Health check (Key Vault connectivity) |
 
-Supported providers: `youtube`, `spotify`, `apple`
+Supported providers: `spotify`, `apple`
 
 ## Key Takeaways
 

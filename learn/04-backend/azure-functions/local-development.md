@@ -30,10 +30,9 @@ Azure Functions Core Tools
 Core Tools Version: 4.x
 
 Functions:
-  YouTubeOAuthInitiate: [POST] http://localhost:7071/api/oauth/youtube/initiate
-  YouTubeOAuthExchange: [POST] http://localhost:7071/api/oauth/youtube/exchange
-  YouTubeOAuthRefresh:  [POST] http://localhost:7071/api/oauth/youtube/refresh
   SpotifyOAuthInitiate: [POST] http://localhost:7071/api/oauth/spotify/initiate
+  SpotifyOAuthExchange: [POST] http://localhost:7071/api/oauth/spotify/exchange
+  SpotifyOAuthRefresh:  [POST] http://localhost:7071/api/oauth/spotify/refresh
   ...
   HealthCheck:          [GET]  http://localhost:7071/api/health
 ```
@@ -78,7 +77,7 @@ Set breakpoints in your function code and step through OAuth flows.
 curl http://localhost:7071/api/health
 
 # Initiate OAuth (requires device token and body)
-curl -X POST http://localhost:7071/api/oauth/youtube/initiate \
+curl -X POST http://localhost:7071/api/oauth/spotify/initiate \
   -H "X-Device-Token: your-guid-here" \
   -H "Content-Type: application/json" \
   -d '{"redirectUri": "http://localhost:5173/oauth/callback"}'

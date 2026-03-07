@@ -26,8 +26,8 @@ cd oauth-proxy
 dotnet user-secrets init
 
 # Set a secret
-dotnet user-secrets set "GoogleClientId" "your-client-id-here"
-dotnet user-secrets set "GoogleClientSecret" "your-client-secret-here"
+dotnet user-secrets set "SpotifyClientId" "your-client-id-here"
+dotnet user-secrets set "SpotifyClientSecret" "your-client-secret-here"
 
 # List all secrets
 dotnet user-secrets list
@@ -66,8 +66,6 @@ DJ.ai's Aspire host passes secrets as environment variables:
 ```csharp
 // DJai.AppHost/Program.cs
 var oauthProxy = builder.AddAzureFunctionsProject<Projects.DJai_OAuthProxy>("oauth-proxy")
-    .WithEnvironment("GoogleClientId", googleClientId)
-    .WithEnvironment("GoogleClientSecret", googleClientSecret)
     .WithEnvironment("SpotifyClientId", spotifyClientId)
     .WithEnvironment("SpotifyClientSecret", spotifyClientSecret);
 ```

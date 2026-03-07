@@ -91,6 +91,5 @@ DJ.ai registers 12+ `handle` channels in `electron-app/electron/main.cjs`. The m
 - **`ai-tts-request`** — fetches binary TTS audio, returns base64-encoded data
 - **`safe-storage-encrypt/decrypt`** — OS-level encryption for API keys, with rate limiting on decrypt
 - **`open-oauth-window`** — creates validated OAuth popup windows with provider-specific settings
-- **`yt-music-play-url`** / **`yt-music-control`** / **`yt-music-get-track`** — playback control for the hidden YouTube Music window
 
 Each channel is exposed through `window.electron.*` in the preload script, giving React components a clean async API.

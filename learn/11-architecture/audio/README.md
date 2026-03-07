@@ -21,7 +21,7 @@ DJ.ai works extensively with audio — from Text-to-Speech commentary to music p
 DJ.ai deals with audio in three areas:
 
 1. **TTS Playback** — AI-generated speech (Gemini, Edge TTS) delivered as PCM/MP3
-2. **Music Playback** — YouTube/Spotify streams via HTML5 Audio or embedded players
+2. **Music Playback** — Spotify/Apple Music streams via HTML5 Audio or embedded players
 3. **Audio Visualization** — (Planned future feature) Frequency analysis driving GPU visuals
 
 ## Learning Path

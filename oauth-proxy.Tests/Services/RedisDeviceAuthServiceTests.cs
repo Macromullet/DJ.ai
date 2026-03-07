@@ -255,7 +255,7 @@ public class RedisDeviceAuthServiceTests
     }
 
     [Fact]
-    public void Redis_IsValidDevice_MaxDevicesReached_ReturnsFalse()
+    public void Redis_IsValidDevice_MaxDevicesReached_EvictsOldestAndRegisters()
     {
         var (service, dbMock) = CreateRedisService();
         var token = Guid.NewGuid().ToString();
@@ -269,7 +269,18 @@ public class RedisDeviceAuthServiceTests
             It.IsAny<double>(), It.IsAny<double>(), It.IsAny<Exclude>(), It.IsAny<CommandFlags>()))
             .Returns(10000);
 
-        service.IsValidDevice(token).Should().BeFalse();
+        // Mock batch for registration after eviction
+        var batch = new Mock<IBatch>();
+        dbMock.Setup(d => d.CreateBatch(It.IsAny<object>())).Returns(batch.Object);
+
+        // LRU eviction should allow the new device to register
+        service.IsValidDevice(token).Should().BeTrue();
+
+        // Verify LRU eviction was called (removes oldest 10%)
+        dbMock.Verify(d => d.SortedSetRemoveRangeByRank(
+            It.Is<RedisKey>(k => k.ToString() == "devices:active"),
+            0, 999,
+            It.IsAny<CommandFlags>()), Times.Once);
     }
 
     #endregion

@@ -273,10 +273,10 @@ export class AICommentaryService implements IAICommentaryService {
     ] : [];
 
     const freshTemplates = [
-      `Alright folks, here we go — ${artist} with ${trackTitle}. Sit back and enjoy this one.`,
+      `Alright folks, here we go — ${artist} with ${trackTitle}${album ? ` off ${album}` : ''}. Sit back and enjoy this one.`,
       `Oh yeah, this is a good one. ${trackTitle} by ${artist}. You know it, you love it.`,
       `Let's get into it. This is ${artist} — ${trackTitle}${album ? `, off ${album}` : ''}. Here we go.`,
-      `Okay okay okay. ${artist} coming through with ${trackTitle}. I never get tired of this one.`,
+      `Okay okay okay. ${artist} coming through with ${trackTitle}${album ? ` from ${album}` : ''}. I never get tired of this one.`,
       `Here's something special for ya. ${trackTitle} from ${artist}. Crank it up.`,
       `This one takes me back. ${artist}, ${trackTitle}. Let the music do the talking.`,
     ];

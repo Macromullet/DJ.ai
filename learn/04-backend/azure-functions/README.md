@@ -30,7 +30,6 @@ DJ.ai uses the **isolated worker model**, which runs your function code in a sep
 
 | Function Class | Routes | Provider |
 |---------------|--------|----------|
-| `YouTubeOAuthFunctions` | `/api/oauth/youtube/{initiate,exchange,refresh}` | Google/YouTube |
 | `SpotifyOAuthFunctions` | `/api/oauth/spotify/{initiate,exchange,refresh}` | Spotify |
 | `AppleMusicOAuthFunctions` | `/api/oauth/apple/{initiate,developer-token,validate}` | Apple Music |
 | `HealthCheckFunction` | `/api/health` | (diagnostics) |
@@ -42,4 +41,4 @@ DJ.ai uses the **isolated worker model**, which runs your function code in a sep
 
 ## DJ.ai Connection
 
-The Azure Functions project lives in `oauth-proxy/`. It's deliberately thin — four function classes, four service interfaces, and a handful of DTOs. Each provider's functions follow the same pattern: validate device token, check rate limit, fetch client secret from Key Vault, call the provider's OAuth endpoint, return tokens. The `HealthCheckFunction` verifies Key Vault connectivity. Locally, functions run via `func start --port 7071` or through Aspire orchestration.
+The Azure Functions project lives in `oauth-proxy/`. It's deliberately thin — three function classes, four service interfaces, and a handful of DTOs. Each provider's functions follow the same pattern: validate device token, check rate limit, fetch client secret from Key Vault, call the provider's OAuth endpoint, return tokens. The `HealthCheckFunction` verifies Key Vault connectivity. Locally, functions run via `func start --port 7071` or through Aspire orchestration.

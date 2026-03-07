@@ -12,7 +12,6 @@ xUnit is the modern .NET testing framework — used by the .NET team itself, wit
 oauth-proxy.Tests/
 ├── AppleMusicOAuthFunctionsTests.cs    # Apple Music JWT, validation
 ├── SpotifyOAuthFunctionsTests.cs       # Spotify OAuth flow tests
-├── YouTubeOAuthFunctionsTests.cs       # YouTube OAuth flow tests
 ├── HealthCheckFunctionTests.cs         # Health endpoint tests
 ├── ValidationServiceTests.cs           # URI/code/state validation
 ├── RedisStateStoreServiceTests.cs      # State storage/consumption

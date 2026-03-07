@@ -27,7 +27,7 @@ Add comprehensive unit test coverage for both frontend and backend.
 - Service tests: AICommentaryService, TTS services (OpenAI, Gemini, ElevenLabs, WebSpeech)
 - Utility tests: secretStorage, validateApiKey, container DI
 - Component tests: Settings, OnboardingWizard, VolumeControl
-- Provider tests: YouTubeMusicProvider mock tests
+- Provider tests: MockMusicProvider tests
 
 ### Backend (xUnit)
 - OAuth function tests: initiate, exchange, refresh for each provider
@@ -51,7 +51,7 @@ Playwright is already configured but has zero test cases. Add end-to-end tests c
 - [ ] App launches and shows onboarding on first run
 - [ ] Onboarding wizard completes successfully
 - [ ] Settings modal opens/saves/closes
-- [ ] Search returns results (mocked YouTube API)
+- [ ] Search returns results (mocked API)
 - [ ] Playback controls work (play/pause/next/previous)
 - [ ] TTS provider selection persists
 - [ ] AI commentary displays in DJ commentary area

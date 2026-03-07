@@ -47,8 +47,6 @@ public class MockSecretService : ISecretService
     {
         return new MockSecretService(new Dictionary<string, string>
         {
-            ["GoogleClientId"] = "test-google-client-id",
-            ["GoogleClientSecret"] = "test-google-client-secret",
             ["SpotifyClientId"] = "test-spotify-client-id",
             ["SpotifyClientSecret"] = "test-spotify-client-secret",
             ["AppleMusicTeamId"] = "TEST12345",

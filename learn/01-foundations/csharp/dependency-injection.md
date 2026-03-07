@@ -106,22 +106,22 @@ public interface IValidationService
 The recommended pattern — declare dependencies as constructor parameters:
 
 ```csharp
-public class YouTubeOAuthFunctions
+public class SpotifyOAuthFunctions
 {
     private readonly ISecretService _secretService;
     private readonly IDeviceAuthService _deviceAuth;
     private readonly IStateStoreService _stateStore;
     private readonly IValidationService _validation;
     private readonly IHttpClientFactory _httpClientFactory;
-    private readonly ILogger<YouTubeOAuthFunctions> _logger;
+    private readonly ILogger<SpotifyOAuthFunctions> _logger;
 
-    public YouTubeOAuthFunctions(
+    public SpotifyOAuthFunctions(
         ISecretService secretService,
         IDeviceAuthService deviceAuth,
         IStateStoreService stateStore,
         IValidationService validation,
         IHttpClientFactory httpClientFactory,
-        ILogger<YouTubeOAuthFunctions> logger)
+        ILogger<SpotifyOAuthFunctions> logger)
     {
         _secretService = secretService;
         _deviceAuth = deviceAuth;
@@ -135,7 +135,7 @@ public class YouTubeOAuthFunctions
 
 ### Registering HttpClient
 
-`IHttpClientFactory` is registered via `AddHttpClient()` and provides managed HTTP connections for calling external APIs (Spotify, Google, Apple):
+`IHttpClientFactory` is registered via `AddHttpClient()` and provides managed HTTP connections for calling external APIs (Spotify, Apple):
 
 ```csharp
 services.AddHttpClient(); // Registers IHttpClientFactory as singleton

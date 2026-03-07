@@ -33,7 +33,7 @@ const isTestMode = urlParams.get('test') === 'true';
 
 | Service | Production | Test Mode |
 |---------|-----------|-----------|
-| Music Provider | `YouTubeMusicProvider` | `MockMusicProvider` |
+| Music Provider | `SpotifyProvider` | `MockMusicProvider` |
 | TTS Service | `GeminiTTSService` | `MockTTSService` |
 | AI Commentary | `GeminiAIService` | `MockAIService` |
 

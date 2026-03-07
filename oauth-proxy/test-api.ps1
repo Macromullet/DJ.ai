@@ -8,13 +8,13 @@ Write-Host "=== Testing DJ.ai OAuth Proxy ===" -ForegroundColor Cyan
 Write-Host ""
 
 # Test 1: Initiate OAuth Flow
-Write-Host "[1/3] Testing YouTube OAuth Initiate..." -ForegroundColor Yellow
+Write-Host "[1/3] Testing Spotify OAuth Initiate..." -ForegroundColor Yellow
 try {
     $body = @{
         redirectUri = "http://localhost:5173/oauth/callback"
     } | ConvertTo-Json
 
-    $response = Invoke-RestMethod -Uri "$baseUrl/youtube/initiate" `
+    $response = Invoke-RestMethod -Uri "$baseUrl/spotify/initiate" `
         -Method POST `
         -Headers @{ "X-Device-Token" = $deviceToken; "Content-Type" = "application/json" } `
         -Body $body
@@ -36,7 +36,7 @@ try {
         redirectUri = "http://localhost:5173/oauth/callback"
     } | ConvertTo-Json
 
-    $response = Invoke-RestMethod -Uri "$baseUrl/youtube/initiate" `
+    $response = Invoke-RestMethod -Uri "$baseUrl/spotify/initiate" `
         -Method POST `
         -Headers @{ "X-Device-Token" = "invalid"; "Content-Type" = "application/json" } `
         -Body $body
@@ -60,7 +60,7 @@ try {
         redirectUri = "http://localhost:5173/oauth/callback"
     } | ConvertTo-Json
 
-    $response = Invoke-RestMethod -Uri "$baseUrl/youtube/initiate" `
+    $response = Invoke-RestMethod -Uri "$baseUrl/spotify/initiate" `
         -Method POST `
         -Headers @{ "Content-Type" = "application/json" } `
         -Body $body

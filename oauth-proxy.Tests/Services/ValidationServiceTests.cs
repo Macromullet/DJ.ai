@@ -76,7 +76,7 @@ public class ValidationServiceTests
     #region IsValidOAuthCode
 
     [Theory]
-    [InlineData("4/P7q7W91a-oMsCeLvIaQm6bTrgtp7")]       // Google-style code
+    [InlineData("4/P7q7W91a-oMsCeLvIaQm6bTrgtp7")]       // Slash-style code
     [InlineData("AQBx_Tsk...longcode_abc123DEF456")]       // Typical long code
     [InlineData("abcdef1234567890")]                        // Simple alphanumeric
     public void IsValidOAuthCode_ValidCode_ReturnsTrue(string code)

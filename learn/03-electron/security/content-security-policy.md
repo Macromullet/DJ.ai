@@ -13,7 +13,7 @@ In Electron, CSP is especially important because your app loads web content that
 | `default-src` | Fallback for all resource types | `'self'` |
 | `script-src` | JavaScript execution | `'self' 'unsafe-inline'` |
 | `connect-src` | Fetch/XHR/WebSocket targets | `https://api.openai.com` |
-| `media-src` | Audio/video sources | `https://music.youtube.com` |
+| `media-src` | Audio/video sources | `blob: data:` |
 | `img-src` | Image loading | `https: data:` |
 | `style-src` | CSS loading | `'self' 'unsafe-inline'` |
 | `frame-src` | Iframe sources | `'none'` |
@@ -36,7 +36,7 @@ session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
       }
     });
   } else {
-    // Don't modify CSP for YouTube Music or OAuth providers
+    // Don't modify CSP for OAuth providers
     callback({ responseHeaders: details.responseHeaders });
   }
 });
@@ -46,10 +46,9 @@ session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
 
 DJ.ai loads content from multiple origins:
 - **Main app** (localhost) — strict CSP, only allowlisted API domains
-- **YouTube Music** (music.youtube.com) — needs YouTube's own CSP to function
-- **OAuth providers** (accounts.google.com) — need their native CSP
+- **OAuth providers** (accounts.spotify.com, etc.) — need their native CSP
 
-Applying a strict CSP to YouTube Music would break it. The solution: only inject custom CSP for the main app's pages.
+Applying a strict CSP to third-party content would break it. The solution: only inject custom CSP for the main app's pages.
 
 ## Key Links
 
@@ -67,4 +66,4 @@ Applying a strict CSP to YouTube Music would break it. The solution: only inject
 
 ## DJ.ai Connection
 
-DJ.ai's CSP configuration in `electron-app/electron/main.cjs` uses `onHeadersReceived` to inject headers only for the main app (localhost/file protocol). The CSP allows connections to AI API domains (OpenAI, Google, ElevenLabs), music provider APIs, and the local OAuth proxy. It blocks `frame-src` to prevent embedding, and restricts `script-src` to prevent unauthorized script execution. YouTube Music and OAuth windows are excluded from custom CSP injection, letting them function with their native security policies.
+DJ.ai's CSP configuration in `electron-app/electron/main.cjs` uses `onHeadersReceived` to inject headers only for the main app (localhost/file protocol). The CSP allows connections to AI API domains (OpenAI, Google, ElevenLabs), music provider APIs, and the local OAuth proxy. It blocks `frame-src` to prevent embedding, and restricts `script-src` to prevent unauthorized script execution. OAuth windows are excluded from custom CSP injection, letting them function with their native security policies.

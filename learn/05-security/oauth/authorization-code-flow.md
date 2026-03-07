@@ -14,8 +14,8 @@ The Authorization Code Flow is the most secure OAuth 2.0 grant type for server-s
 │          │
 │          │     3. Open auth URL        ┌──────────────┐
 │          │ ─────────────────────────► │  Auth Server │
-│          │                             │  (Google,    │
-│          │     4. User logs in         │   Spotify)   │
+│          │                             │  (Spotify,   │
+│          │     4. User logs in         │   Apple)     │
 │          │                             └──────┬───────┘
 │          │     5. Redirect with code          │
 │          │ ◄──────────────────────────────────┘
@@ -42,7 +42,6 @@ The Authorization Code Flow is the most secure OAuth 2.0 grant type for server-s
 | File | Role |
 |------|------|
 | `oauth-proxy/Functions/SpotifyOAuthFunctions.cs` | `/initiate` builds auth URL, `/exchange` trades code for tokens |
-| `oauth-proxy/Functions/YouTubeOAuthFunctions.cs` | Same pattern for YouTube/Google OAuth |
 | `electron-app/src/components/OAuthCallback.tsx` | Catches the redirect, extracts code and state, routes to provider |
 | `electron-app/src/providers/SpotifyProvider.ts` | Calls initiate/exchange endpoints, stores tokens in localStorage |
 | `oauth-proxy/Models/OAuthModels.cs` | DTOs: `OAuthInitiateRequest`, `OAuthExchangeRequest`, `OAuthTokenResponse` |

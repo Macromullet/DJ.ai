@@ -2,11 +2,10 @@
 
 ## The Concept
 
-The **Strategy Pattern** defines a family of algorithms (or behaviors), encapsulates each one, and makes them interchangeable. In DJ.ai, "algorithms" are music providers — YouTube Music, Spotify, Apple Music — that all implement the same interface but have completely different internal implementations.
+The **Strategy Pattern** defines a family of algorithms (or behaviors), encapsulates each one, and makes them interchangeable. In DJ.ai, "algorithms" are music providers — Spotify and Apple Music — that all implement the same interface but have completely different internal implementations.
 
 ```
 IMusicProvider (interface)
-├── YouTubeMusicProvider   → YouTube Data API
 ├── SpotifyProvider        → Spotify Web API
 └── AppleMusicProvider     → Apple Music API
 ```
@@ -50,39 +49,40 @@ interface IMusicProvider {
 4. **Register in Settings UI** — Add to the provider selection dropdown
 5. **Update docs** — Add to `ARCHITECTURE.md`
 
-### Example: YouTube Implementation
-
-```typescript
-class YouTubeMusicProvider implements IMusicProvider {
-  async searchTracks(query: string): Promise<SearchResult[]> {
-    // Calls YouTube Data API directly using stored OAuth token
-    const response = await fetch(
-      `https://www.googleapis.com/youtube/v3/search?q=${query}&type=video`,
-      { headers: { Authorization: `Bearer ${this.accessToken}` } }
-    );
-    // Transform YouTube response to SearchResult format
-  }
-}
-```
-
-### Example: Spotify Would Differ Completely
+### Example: Spotify Implementation
 
 ```typescript
 class SpotifyProvider implements IMusicProvider {
   async searchTracks(query: string): Promise<SearchResult[]> {
-    // Calls Spotify Web API with different URL, params, response format
+    // Calls Spotify Web API directly using stored OAuth token
     const response = await fetch(
       `https://api.spotify.com/v1/search?q=${query}&type=track`,
       { headers: { Authorization: `Bearer ${this.accessToken}` } }
     );
-    // Transform Spotify response to the SAME SearchResult format
+    // Transform Spotify response to SearchResult format
+  }
+}
+```
+
+### Example: Apple Music Would Differ Completely
+
+```typescript
+class AppleMusicProvider implements IMusicProvider {
+  async searchTracks(query: string): Promise<SearchResult[]> {
+    // Calls Apple Music API with different URL, params, response format
+    const response = await fetch(
+      `https://api.music.apple.com/v1/catalog/us/search?term=${query}&types=songs`,
+      { headers: { Authorization: `Bearer ${this.developerToken}`,
+                    'Music-User-Token': this.userToken } }
+    );
+    // Transform Apple Music response to the SAME SearchResult format
   }
 }
 ```
 
 ## DJ.ai Connection
 
-The IMusicProvider interface is the extensibility point of DJ.ai. The `App.tsx` component and `MusicPlayer` work with the interface — they call `searchTracks()`, `playTrack()`, etc. without knowing which provider is active. The YouTube provider is fully implemented, Spotify is architecture-ready, and Apple Music is planned. Each new provider is just another class implementing the same interface.
+The IMusicProvider interface is the extensibility point of DJ.ai. The `App.tsx` component and `MusicPlayer` work with the interface — they call `searchTracks()`, `playTrack()`, etc. without knowing which provider is active. Apple Music is the default provider and Spotify is fully implemented. Each new provider is just another class implementing the same interface.
 
 ## Key Takeaways
 

@@ -58,24 +58,31 @@ export class WebSpeechTTSService implements ITTSService {
 
   async getAvailableVoices(): Promise<TTSVoice[]> {
     return new Promise((resolve) => {
-      const getVoices = () => {
-        const voices = this.synth.getVoices();
-        if (voices.length > 0) {
-          resolve(voices.map(v => ({
-            id: v.voiceURI,
-            name: v.name,
-            language: v.lang,
-            provider: 'web-speech' as const,
-          })));
-        }
-      };
+      const mapVoices = (voices: SpeechSynthesisVoice[]) =>
+        voices.map(v => ({
+          id: v.voiceURI,
+          name: v.name,
+          language: v.lang,
+          provider: 'web-speech' as const,
+        }));
 
-      getVoices();
-      
-      // Some browsers load voices asynchronously
-      if (this.synth.getVoices().length === 0) {
-        this.synth.onvoiceschanged = getVoices;
+      const voices = this.synth.getVoices();
+      if (voices.length > 0) {
+        resolve(mapVoices(voices));
+        return;
       }
+
+      // Some browsers load voices asynchronously — wait with a timeout
+      const timeout = setTimeout(() => {
+        this.synth.onvoiceschanged = null;
+        resolve([]);
+      }, 3000);
+
+      this.synth.onvoiceschanged = () => {
+        clearTimeout(timeout);
+        this.synth.onvoiceschanged = null;
+        resolve(mapVoices(this.synth.getVoices()));
+      };
     });
   }
 

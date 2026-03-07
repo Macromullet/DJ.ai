@@ -2,7 +2,7 @@
 
 > Client-side routing for single-page applications — handling navigation and OAuth callbacks in DJ.ai.
 
-React Router DOM provides declarative routing for React SPAs. In DJ.ai, routing is used primarily for one critical purpose: **handling OAuth callback redirects**. When a user authenticates with a music provider (Spotify, YouTube, Apple Music), the OAuth flow redirects back to the app at `/oauth/callback` with an authorization code. React Router captures this route and renders the `OAuthCallback` component to process the code exchange.
+React Router DOM provides declarative routing for React SPAs. In DJ.ai, routing is used primarily for one critical purpose: **handling OAuth callback redirects**. When a user authenticates with a music provider (Spotify or Apple Music), the OAuth flow redirects back to the app at `/oauth/callback` with an authorization code. React Router captures this route and renders the `OAuthCallback` component to process the code exchange.
 
 ---
 

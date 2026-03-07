@@ -45,8 +45,8 @@ bool exists = await _db.KeyExistsAsync($"device:{deviceToken}");
 A hash stores multiple field-value pairs under one key — like a dictionary or object:
 
 ```redis
-HSET device:abc-123 created "2024-01-15" provider "youtube" requests "42"
-HGET device:abc-123 provider    -- → "youtube"
+HSET device:abc-123 created "2024-01-15" provider "spotify" requests "42"
+HGET device:abc-123 provider    -- → "spotify"
 HINCRBY device:abc-123 requests 1  -- Atomic field increment
 HGETALL device:abc-123          -- → all fields
 ```

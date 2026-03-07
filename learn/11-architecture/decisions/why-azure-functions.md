@@ -65,7 +65,7 @@ Use **.NET 8 isolated Azure Functions** for the OAuth proxy backend.
 
 ## DJ.ai Connection
 
-The Azure Functions backend is in `oauth-proxy/`, with Function classes in `oauth-proxy/Functions/`. Each provider gets its own Functions class (e.g., `YouTubeOAuthFunctions.cs`). The `DJai.AppHost` Aspire project uses `AddAzureFunctionsProject()` to orchestrate the Functions locally during development. Deployment is via `azd deploy` or the GitHub Actions `deploy-oauth-proxy.yml` workflow.
+The Azure Functions backend is in `oauth-proxy/`, with Function classes in `oauth-proxy/Functions/`. Each provider gets its own Functions class (e.g., `SpotifyOAuthFunctions.cs`). The `DJai.AppHost` Aspire project uses `AddAzureFunctionsProject()` to orchestrate the Functions locally during development. Deployment is via `azd deploy` or the GitHub Actions `deploy-oauth-proxy.yml` workflow.
 
 ## Further Reading
 

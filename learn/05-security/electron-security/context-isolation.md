@@ -44,10 +44,6 @@ const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('electron', {
   // Only expose specific, validated functions
-  ytMusic: {
-    onPlayPause: (cb) => ipcRenderer.on('yt-play-pause', cb),
-    onNext: (cb) => ipcRenderer.on('yt-next', cb),
-  },
   aiProxy: {
     request: (options) => ipcRenderer.invoke('ai-api-request', options),
     ttsRequest: (options) => ipcRenderer.invoke('ai-tts-request', options),
@@ -73,7 +69,6 @@ The preload script exposes exactly these APIs — nothing more:
 
 | Namespace | Functions | Purpose |
 |-----------|-----------|---------|
-| `electron.ytMusic` | Play/pause, next, prev event handlers | YouTube Music media key integration |
 | `electron.oauth` | Deep link handler | OAuth callback routing |
 | `electron.aiProxy` | `request()`, `ttsRequest()` | AI API proxy (bypasses CORS) |
 | `electron.safeStorage` | `encrypt()`, `decrypt()` | OS keychain for API keys |

@@ -11,7 +11,7 @@ OAuth defines four roles:
 | **Resource Owner** | The user (you) |
 | **Client** | The DJ.ai Electron app |
 | **Authorization Server** | Google, Spotify, or Apple's login page |
-| **Resource Server** | YouTube Data API, Spotify Web API, Apple Music API |
+| **Resource Server** | Spotify Web API, Apple Music API |
 
 ## Why DJ.ai Needs OAuth
 
@@ -33,8 +33,8 @@ DJ.ai connects to multiple music streaming platforms. Each requires user authori
 
 The OAuth flow spans both the frontend and backend:
 
-- **Frontend**: `electron-app/src/providers/SpotifyProvider.ts`, `YouTubeMusicProvider.ts`, `AppleMusicProvider.ts` — initiate flows, store tokens, make API calls
-- **Backend**: `oauth-proxy/Functions/SpotifyOAuthFunctions.cs`, `YouTubeOAuthFunctions.cs`, `AppleMusicOAuthFunctions.cs` — exchange codes for tokens using the client secret
+- **Frontend**: `electron-app/src/providers/SpotifyProvider.ts`, `AppleMusicProvider.ts` — initiate flows, store tokens, make API calls
+- **Backend**: `oauth-proxy/Functions/SpotifyOAuthFunctions.cs`, `AppleMusicOAuthFunctions.cs` — exchange codes for tokens using the client secret
 - **Callback handler**: `electron-app/src/components/OAuthCallback.tsx` — routes the authorization code to the correct provider
 
 ## Key Takeaways

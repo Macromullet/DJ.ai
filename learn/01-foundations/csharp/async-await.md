@@ -127,7 +127,6 @@ string clientSecret = results[1];
 ## 🔗 DJ.ai Connection
 
 - **`oauth-proxy/Functions/SpotifyOAuthFunctions.cs`** — Three async endpoints: `InitiateSpotifyOAuth`, `ExchangeSpotifyCode`, `RefreshSpotifyToken` — all use `async Task<HttpResponseData>`
-- **`oauth-proxy/Functions/YouTubeOAuthFunctions.cs`** — Same pattern for YouTube OAuth
 - **`oauth-proxy/Functions/AppleMusicOAuthFunctions.cs`** — JWT token generation with `SemaphoreSlim` for thread-safe caching alongside async Key Vault calls
 - **`oauth-proxy/Services/KeyVaultSecretService.cs`** — Async Key Vault access with 1-hour in-memory caching
 - **`oauth-proxy/Services/RedisDeviceAuthService.cs`** — Async Redis operations with in-memory fallback

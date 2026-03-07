@@ -39,7 +39,7 @@ var client = new SecretClient(
     new Uri("https://djai-keyvault.vault.azure.net/"),
     credential
 );
-var secret = await client.GetSecretAsync("YouTube-ClientSecret");
+var secret = await client.GetSecretAsync("Spotify-ClientSecret");
 ```
 
 Azure handles authentication transparently — the Function App's identity is pre-authorized in Key Vault's access policies.

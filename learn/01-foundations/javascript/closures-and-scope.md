@@ -118,7 +118,7 @@ Using `let` instead of `const` for `mainWindow` means the closure always reads t
 ## 🔗 DJ.ai Connection
 
 - **`electron-app/src/App.tsx`** — Uses `isPlayingRef`, `playlistRef`, `currentTrackRef`, `settingsRef`, `autoDJModeRef`, `ttsEnabledRef`, `isTransitioningRef`, `playRequestIdRef`, and `preGenCacheRef` — all to avoid stale closures in tray callbacks, keyboard handlers, and auto-DJ lookahead logic
-- **`electron-app/electron/main.cjs`** — IPC handlers close over `mainWindow`, `ytMusicWindow`, `oauthWindow`, and `tray` variables; uses `let` so closures always see the latest reference
+- **`electron-app/electron/main.cjs`** — IPC handlers close over `mainWindow`, `oauthWindow`, and `tray` variables; uses `let` so closures always see the latest reference
 - **`electron-app/electron/preload.cjs`** — Closures capture `ipcRenderer` callbacks for the context bridge
 - **`electron-app/src/components/Toast.tsx`** — The `useToast` hook uses closure-based state management for the toast queue
 

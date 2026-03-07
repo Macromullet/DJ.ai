@@ -34,6 +34,10 @@ When working with Copilot agents on this project:
 - **Fix review findings before merge** — don't skip issues; fix them and re-verify
 - **Squash merge** feature branches to main (single clean commit per body of work)
 - **Don't modify `package.json` or `package-lock.json`** without explicit permission — no surprise dependency changes
+- **Run tests after every change** — `npm run test:unit` (frontend), `dotnet test` (backend). No exceptions.
+- **Anti-tautology testing** — Never write a test that validates its own mocks. Every test must exercise real source code. Ask: "If I introduced a bug, would this test catch it?" If not, rewrite it.
+- **Failing tests are good** — A test that reveals a real bug is a success. Don't weaken tests to make dashboards green. Fix the source code, not the test.
+- **Use the feedback loop** — Run `npm run test:failures` to get agent-readable failure output with source context. Diagnose → fix → re-run → repeat.
 
 ## Build, Test, and Development Commands
 
@@ -81,9 +85,14 @@ npm run electron:build         # Build distributable package
 npm run electron:start         # Start Electron with built app
 
 # Testing
-npm test                       # Run Playwright tests (requires app running)
-npm run test:ui               # Run Playwright with UI
-npm run test:headed           # Run Playwright in headed mode
+npm run test:unit          # Vitest unit tests (services, providers, utils)
+npm run test:unit:watch    # Vitest in watch mode
+npm run test:integration   # Vitest + RTL component tests
+npm run test:coverage      # Unit tests with coverage report
+npm run test:e2e           # Playwright E2E tests (starts dev server)
+npm run test:all           # Full pipeline: unit + E2E
+npm run test:failures      # Print agent-friendly failure digest
+npm test                   # Playwright tests (legacy alias)
 ```
 
 ### Backend (oauth-proxy)
@@ -274,14 +283,64 @@ Follow conventional commits format (from CONTRIBUTING.md):
 - `role="slider"` with `aria-valuenow/min/max` on custom sliders
 - `prefers-reduced-motion` respected globally (base.css handles this)
 
-### Testing Expectations
+### Testing Philosophy & Pipeline
 
-Manual testing is current approach. When adding tests:
-- **Frontend:** Use Playwright (already configured)
-- **Backend:** Use xUnit for .NET unit tests
-- Test OAuth flow end-to-end
-- Verify no console errors
-- Test on multiple platforms if changing core functionality
+**Cardinal rule: Tests exist to catch bugs, not to pass.** A failing test that exposes a real bug is infinitely more valuable than a passing test that validates nothing. Never bias toward green dashboards — bias toward truth.
+
+**Anti-tautology principle:** A test that sets up a mock to return X, then asserts X was returned, proves nothing. Every test must exercise real source code logic. Ask: *"If I introduced a bug in the source, would this test catch it?"* If not, rewrite it.
+
+**Test ordering (mandatory):**
+```bash
+# Frontend
+cd electron-app
+npm run test:unit          # Vitest: services, providers, utils, electron (~3s)
+npm run test:integration   # Vitest + RTL: components with DI mocks   (~5s)
+
+# Backend
+cd oauth-proxy.Tests
+dotnet test                # xUnit: OAuth functions, validation         (~3s)
+
+# E2E (requires stubbed app)
+cd electron-app
+npm run test:e2e           # Playwright: full flows via ?test=true      (~30s)
+
+# All at once
+npm run test:all           # Full pipeline in sequence
+
+# Agent feedback loop
+npm run test:failures      # Print only failures with source context
+```
+
+**Run `npm run test:unit` after every code change.** No exceptions.
+
+**Test quality checklist (for writing AND reviewing tests):**
+- [ ] Does this test exercise real source code logic, not just mock plumbing?
+- [ ] If the source code had a subtle bug (off-by-one, wrong URL, swapped params), would this test fail?
+- [ ] Are error paths tested, not just happy paths?
+- [ ] For security code: are attack patterns tested (SSRF, parameter injection, bypass attempts)?
+- [ ] Does the assertion check meaningful output, not just "function was called"?
+- [ ] Is the test deterministic (no randomness, no timing dependencies)?
+
+**Frameworks:**
+- **Frontend unit/integration:** Vitest + React Testing Library + jsdom
+- **Backend:** xUnit + Moq + FluentAssertions
+- **E2E:** Playwright (Chromium, against `?test=true` stubbed system)
+- **Mocks:** MockTTSService, MockAICommentaryService, MockMusicProvider — all with call tracking, error injection, `reset()`
+
+**Feedback loop for agents:**
+1. Run `npm run test:ci` (all tests with JSON output)
+2. On failure → `npm run test:failures` (prints agent-friendly failure digest)
+3. Output includes: file, line, error message, source context, screenshots
+4. Agent reads output → opens source → fixes bug → re-runs → repeats until green
+5. **If a test fails, investigate whether the test or the code is wrong.** Don't blindly fix the test to make it pass.
+
+**Mock conventions:**
+- All mocks implement the real interface (type-safe)
+- All mocks have: `callHistory[]`, `reset()`, `getCallsFor(method)`, `wasCalledWith(method, ...args)`
+- Configurable failure: `{ shouldFail, failAfter, latencyMs, failureError }`
+- Test fixtures: valid 1-second silence MP3/WAV files in `src/test-fixtures/`
+
+**Coverage:** Target 70% statements, but coverage without quality is vanity. 50% of meaningful tests beats 95% of tautologies.
 
 ## Important Notes
 
@@ -308,6 +367,7 @@ Manual testing is current approach. When adding tests:
 
 ## Current Status
 
-✅ **Working:** YouTube Music provider, OAuth flow, Dev environment, Aspire orchestration, CI/CD pipelines, Onboarding wizard, Design token system
-🚧 **In Progress:** Spotify provider, AI commentary, TTS
-📋 **Planned:** Apple Music provider, GPU visualizations, Playlists
+✅ **Working:** Apple Music provider (default), OAuth flow, Dev environment, Aspire orchestration, CI/CD pipelines, Onboarding wizard, Design token system, AI DJ commentary, Multi-provider TTS, Auto-DJ with look-ahead, Keyboard shortcuts, System tray, Toast/desktop notifications
+🧪 **Testing:** Vitest unit/integration tests, xUnit backend tests, Playwright E2E, feedback loop scripts
+🚧 **In Progress:** Spotify provider
+📋 **Planned:** GPU visualizations, Playlists, YouTube Music (audio-only rewrite)

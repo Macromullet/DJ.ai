@@ -24,7 +24,8 @@ export function VolumeControl({ initialVolume = 80, onVolumeChange }: VolumeCont
   const [volume, setVolume] = useState(() => {
     // Load saved volume from localStorage
     const saved = localStorage.getItem('djai_volume');
-    return saved ? parseInt(saved, 10) : initialVolume;
+    const parsed = saved !== null ? parseInt(saved, 10) : NaN;
+    return Number.isNaN(parsed) ? initialVolume : parsed;
   });
   
   const [isMuted, setIsMuted] = useState(false);
@@ -35,7 +36,7 @@ export function VolumeControl({ initialVolume = 80, onVolumeChange }: VolumeCont
     if (onVolumeChange) {
       onVolumeChange(isMuted ? 0 : volume);
     }
-  }, [volume, isMuted]);
+  }, [volume, isMuted, onVolumeChange]);
 
   const handleVolumeChange= (e: React.ChangeEvent<HTMLInputElement>) => {
     const newVolume = parseInt(e.target.value, 10);
@@ -49,10 +50,6 @@ export function VolumeControl({ initialVolume = 80, onVolumeChange }: VolumeCont
       setIsMuted(false);
     }
     
-    // Notify parent
-    if (onVolumeChange) {
-      onVolumeChange(newVolume);
-    }
   };
 
   const toggleMute = () => {

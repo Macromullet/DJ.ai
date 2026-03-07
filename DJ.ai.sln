@@ -11,6 +11,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DJai.ServiceDefaults", "DJa
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DJai.AppHost", "DJai.AppHost\DJai.AppHost.csproj", "{41BEE762-B64A-4668-B194-C469548BF176}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "oauth-proxy.Tests", "oauth-proxy.Tests", "{2964A51F-1F5B-75D0-EEE2-492B31CFAEDF}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DJai.OAuthProxy.Tests", "oauth-proxy.Tests\DJai.OAuthProxy.Tests.csproj", "{BB6071CB-F090-47A2-A930-16BD3BF810F3}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -57,12 +61,25 @@ Global
 		{41BEE762-B64A-4668-B194-C469548BF176}.Release|x64.Build.0 = Release|Any CPU
 		{41BEE762-B64A-4668-B194-C469548BF176}.Release|x86.ActiveCfg = Release|Any CPU
 		{41BEE762-B64A-4668-B194-C469548BF176}.Release|x86.Build.0 = Release|Any CPU
+		{BB6071CB-F090-47A2-A930-16BD3BF810F3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BB6071CB-F090-47A2-A930-16BD3BF810F3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BB6071CB-F090-47A2-A930-16BD3BF810F3}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{BB6071CB-F090-47A2-A930-16BD3BF810F3}.Debug|x64.Build.0 = Debug|Any CPU
+		{BB6071CB-F090-47A2-A930-16BD3BF810F3}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{BB6071CB-F090-47A2-A930-16BD3BF810F3}.Debug|x86.Build.0 = Debug|Any CPU
+		{BB6071CB-F090-47A2-A930-16BD3BF810F3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BB6071CB-F090-47A2-A930-16BD3BF810F3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BB6071CB-F090-47A2-A930-16BD3BF810F3}.Release|x64.ActiveCfg = Release|Any CPU
+		{BB6071CB-F090-47A2-A930-16BD3BF810F3}.Release|x64.Build.0 = Release|Any CPU
+		{BB6071CB-F090-47A2-A930-16BD3BF810F3}.Release|x86.ActiveCfg = Release|Any CPU
+		{BB6071CB-F090-47A2-A930-16BD3BF810F3}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{D1BCABA2-4659-1656-DC09-226C85F23283} = {89F3E97B-1D5E-F787-9B7C-C5A42CDB06C1}
+		{BB6071CB-F090-47A2-A930-16BD3BF810F3} = {2964A51F-1F5B-75D0-EEE2-492B31CFAEDF}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {F57BF1AB-2445-4ACB-BC86-9D7FDBE90DF5}

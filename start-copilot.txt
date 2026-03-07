@@ -1,0 +1,10 @@
+Import-Module Microsoft.PowerShell.SecretManagement
+
+$env:GITHUB_PERSONAL_ACCESS_TOKEN = Get-Secret -Name GitHubMcpPat -AsPlainText
+
+try {
+    copilot @Args
+}
+finally {
+    Remove-Item Env:\GITHUB_PERSONAL_ACCESS_TOKEN -ErrorAction SilentlyContinue
+}

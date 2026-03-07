@@ -393,15 +393,58 @@
 }
 
 .playlist h3 {
-  margin: 0 0 var(--space-3) 0;
+  margin: 0;
   font-size: var(--text-lg);
   font-weight: var(--weight-bold);
   color: var(--color-text-accent);
+}
+
+.playlist-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   position: sticky;
   top: 0;
   background: var(--color-bg-card);
   padding-bottom: var(--space-2);
+  margin-bottom: var(--space-3);
   z-index: var(--z-raised);
+}
+
+.clear-playlist-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: var(--text-base);
+  opacity: 0.5;
+  transition: opacity var(--transition-fast);
+  padding: var(--space-1);
+}
+
+.clear-playlist-btn:hover {
+  opacity: 1;
+}
+
+.remove-track-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  opacity: 0;
+  transition: opacity var(--transition-fast);
+  padding: var(--space-1);
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.playlist li:hover .remove-track-btn {
+  opacity: 0.6;
+}
+
+.remove-track-btn:hover {
+  opacity: 1;
+  color: var(--color-error);
 }
 
 .playlist ul {

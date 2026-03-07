@@ -30,11 +30,21 @@ interface ElectronBridge {
   openOAuthWindow: (options: unknown) => Promise<unknown>;
   aiProxy: {
     request: (options: AiProxyRequestOptions) => Promise<AiProxyResponse>;
+    ttsRequest: (options: AiProxyRequestOptions) => Promise<AiProxyResponse>;
   };
   safeStorage: {
     isAvailable: () => Promise<boolean>;
     encrypt: (plaintext: string) => Promise<string>;
     decrypt: (encrypted: string) => Promise<string>;
+  };
+  notifications: {
+    show: (options: { title: string; body: string; icon?: string }) => Promise<boolean>;
+  };
+  tray: {
+    updateInfo: (info: { title: string; artist: string; isPlaying: boolean }) => Promise<boolean>;
+    onPlaybackToggle: (callback: () => void) => void;
+    onNextTrack: (callback: () => void) => void;
+    onPreviousTrack: (callback: () => void) => void;
   };
   isElectron: true;
 }

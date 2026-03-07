@@ -13,12 +13,14 @@ export interface ApiKeys {
   openaiApiKey: string;
   anthropicApiKey: string;
   elevenLabsApiKey: string;
+  geminiApiKey: string;
 }
 
 const DEFAULT_KEYS: ApiKeys = {
   openaiApiKey: '',
   anthropicApiKey: '',
   elevenLabsApiKey: '',
+  geminiApiKey: '',
 };
 
 async function isElectronSafeStorageAvailable(): Promise<boolean> {

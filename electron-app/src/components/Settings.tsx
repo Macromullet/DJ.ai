@@ -27,12 +27,13 @@ export interface SettingsConfig {
   };
   
   // AI & TTS settings
-  aiProvider: 'copilot' | 'openai' | 'anthropic';
+  aiProvider: 'openai' | 'anthropic';
   openaiApiKey: string;
   anthropicApiKey: string;
   elevenLabsApiKey: string;
+  geminiApiKey: string;
   ttsEnabled: boolean;
-  ttsProvider: 'openai' | 'elevenlabs';
+  ttsProvider: 'web-speech' | 'openai' | 'gemini' | 'elevenlabs';
   ttsVoice: string;
   autoDJMode: boolean;
 }
@@ -41,12 +42,11 @@ interface SettingsProps {
   config: SettingsConfig;
   onSave: (config: SettingsConfig) => void;
   onClose: () => void;
-  copilotAvailable: boolean;
   onConnectProvider: (provider: 'youtube' | 'spotify' | 'apple') => void;
   onDisconnectProvider: (provider: 'youtube' | 'spotify' | 'apple') => void;
 }
 
-export function Settings({ config, onSave, onClose, copilotAvailable, onConnectProvider, onDisconnectProvider }: SettingsProps) {
+export function Settings({ config, onSave, onClose, onConnectProvider, onDisconnectProvider }: SettingsProps) {
   const [localConfig, setLocalConfig] = useState<SettingsConfig>(config);
 
   const handleSave = () => {
@@ -189,21 +189,6 @@ export function Settings({ config, onSave, onClose, copilotAvailable, onConnectP
                 <input
                   type="radio"
                   name="aiProvider"
-                  value="copilot"
-                  checked={localConfig.aiProvider === 'copilot'}
-                  onChange={(_e) => setLocalConfig({...localConfig, aiProvider: 'copilot'})}
-                  disabled={!copilotAvailable}
-                />
-                GitHub Copilot {copilotAvailable ? '✅ Detected' : '❌ Not Available'}
-              </label>
-              <p className="help-text">Uses your existing GitHub Copilot authentication. Free if you have Copilot!</p>
-            </div>
-
-            <div className="setting-item">
-              <label>
-                <input
-                  type="radio"
-                  name="aiProvider"
                   value="openai"
                   checked={localConfig.aiProvider === 'openai'}
                   onChange={(_e) => setLocalConfig({...localConfig, aiProvider: 'openai'})}
@@ -266,9 +251,11 @@ export function Settings({ config, onSave, onClose, copilotAvailable, onConnectP
                   <label>TTS Provider</label>
                   <select
                     value={localConfig.ttsProvider}
-                    onChange={(e) => setLocalConfig({...localConfig, ttsProvider: e.target.value as 'openai' | 'elevenlabs'})}
+                    onChange={(e) => setLocalConfig({...localConfig, ttsProvider: e.target.value as 'web-speech' | 'openai' | 'gemini' | 'elevenlabs'})}
                   >
-                    <option value="openai">OpenAI TTS (Recommended)</option>
+                    <option value="web-speech">Web Speech (Free, built-in)</option>
+                    <option value="openai">OpenAI TTS</option>
+                    <option value="gemini">Google Gemini TTS</option>
                     <option value="elevenlabs">ElevenLabs (Premium)</option>
                   </select>
                 </div>
@@ -286,6 +273,22 @@ export function Settings({ config, onSave, onClose, copilotAvailable, onConnectP
                     </select>
                     <p className="help-text">Uses OpenAI API key (same as commentary)</p>
                   </div>
+                )}
+
+                {localConfig.ttsProvider === 'gemini' && (
+                  <>
+                    <div className="setting-item">
+                      <label>Gemini API Key</label>
+                      <input
+                        type="password"
+                        placeholder="Enter Gemini API key"
+                        value={localConfig.geminiApiKey}
+                        onChange={(e) => setLocalConfig({...localConfig, geminiApiKey: e.target.value})}
+                        className="api-key-input"
+                      />
+                      <p className="help-text">Get from <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer">Google AI Studio</a></p>
+                    </div>
+                  </>
                 )}
 
                 {localConfig.ttsProvider === 'elevenlabs' && (

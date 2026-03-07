@@ -1,10 +1,12 @@
-const { app, BrowserWindow, ipcMain, shell, safeStorage } = require('electron');
+const { app, BrowserWindow, ipcMain, shell, safeStorage, Notification, Tray, Menu, nativeImage, globalShortcut } = require('electron');
 const path = require('path');
 const { spawn } = require('child_process');
 
 let mainWindow = null;
 let ytMusicWindow = null;
 let oauthWindow = null;
+let tray = null;
+let currentTrackInfo = { title: 'DJ.ai', artist: '' };
 
 const isDev = !app.isPackaged;
 
@@ -89,6 +91,13 @@ function createWindow() {
     return { action: 'deny' };
   });
 
+  mainWindow.on('close', (event) => {
+    if (!app.isQuitting) {
+      event.preventDefault();
+      mainWindow.hide();
+    }
+  });
+
   mainWindow.on('closed', () => {
     mainWindow = null;
     if (ytMusicWindow) ytMusicWindow.close();
@@ -139,6 +148,70 @@ function createYouTubeMusicWindow() {
   });
 
   return ytMusicWindow;
+}
+
+// System tray
+function createTray() {
+  const trayIcon = nativeImage.createFromDataURL('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAsElEQVQ4T2NkoBAwUqifgXoGzPr/n+E/AwMDIyMjw6z//xn+MzAwgORhAGQIyBCgAQwMIENAbpj1H8kFIANBBsAMQjYA5AKQNwlyAUwDbhrIAJC3sLkA5myQC0AugenBFgYgA2DeQnYB0VEIMwhkCMgQZG8Ra8CsWf8Z/jP8Bwcj0bEASwxQzVlAR2INA5ALUQ2c9Z+R4T8jOg2ZTQJ5CxYLoKAAimQYAAA5sVYEUDIVigAAAABJRU5ErkJggg==');
+  tray = new Tray(trayIcon);
+  tray.setToolTip('DJ.ai');
+  updateTrayMenu();
+
+  tray.on('double-click', () => {
+    mainWindow?.show();
+    mainWindow?.focus();
+  });
+}
+
+function updateTrayMenu(isPlaying = false) {
+  const contextMenu = Menu.buildFromTemplate([
+    {
+      label: currentTrackInfo.title + (currentTrackInfo.artist ? ' - ' + currentTrackInfo.artist : ''),
+      enabled: false
+    },
+    { type: 'separator' },
+    {
+      label: isPlaying ? '⏸ Pause' : '▶ Play',
+      click: () => mainWindow?.webContents.send('tray-playback-toggle')
+    },
+    { label: '⏭ Next', click: () => mainWindow?.webContents.send('tray-next-track') },
+    { label: '⏮ Previous', click: () => mainWindow?.webContents.send('tray-previous-track') },
+    { type: 'separator' },
+    {
+      label: 'Show Window',
+      click: () => { mainWindow?.show(); mainWindow?.focus(); }
+    },
+    { type: 'separator' },
+    { label: 'Quit DJ.ai', click: () => { app.isQuitting = true; app.quit(); } }
+  ]);
+  tray.setContextMenu(contextMenu);
+}
+
+// Tray track info updates
+ipcMain.handle('update-tray-info', async (_event, { title, artist, isPlaying }) => {
+  currentTrackInfo = { title: title || 'DJ.ai', artist: artist || '' };
+  if (tray) {
+    tray.setToolTip(`${currentTrackInfo.title}${currentTrackInfo.artist ? ' - ' + currentTrackInfo.artist : ''}`);
+    updateTrayMenu(isPlaying);
+  }
+  return true;
+});
+
+// Media key support
+function registerMediaKeys() {
+  try {
+    globalShortcut.register('MediaPlayPause', () => {
+      mainWindow?.webContents.send('tray-playback-toggle');
+    });
+    globalShortcut.register('MediaNextTrack', () => {
+      mainWindow?.webContents.send('tray-next-track');
+    });
+    globalShortcut.register('MediaPreviousTrack', () => {
+      mainWindow?.webContents.send('tray-previous-track');
+    });
+  } catch (e) {
+    console.warn('Failed to register media keys:', e.message);
+  }
 }
 
 // Allowlist of valid playback control actions
@@ -346,6 +419,7 @@ const AI_API_ALLOWLIST = new Set([
   'api.openai.com',
   'api.anthropic.com',
   'generativelanguage.googleapis.com',
+  'api.elevenlabs.io',
 ]);
 
 ipcMain.handle('ai-api-request', async (event, { url, method, headers, body }) => {
@@ -371,7 +445,7 @@ ipcMain.handle('ai-api-request', async (event, { url, method, headers, body }) =
       };
     }
 
-    const response = await fetch(url, {
+    const response = await fetch(parsed.href, {
       method: method || 'POST',
       headers: headers || {},
       body: body ? JSON.stringify(body) : undefined,
@@ -391,6 +465,37 @@ ipcMain.handle('ai-api-request', async (event, { url, method, headers, body }) =
       statusText: error.message,
       body: null,
     };
+  }
+});
+
+// IPC handler for TTS audio requests (returns base64-encoded binary audio)
+ipcMain.handle('ai-tts-request', async (event, { url, method, headers, body }) => {
+  try {
+    const parsed = new URL(url);
+    if (!AI_API_ALLOWLIST.has(parsed.hostname)) {
+      return { ok: false, status: 403, statusText: 'Forbidden: domain not in allowlist', body: null };
+    }
+    if (parsed.protocol !== 'https:') {
+      return { ok: false, status: 403, statusText: 'Only HTTPS requests are allowed', body: null };
+    }
+
+    const response = await fetch(parsed.href, {
+      method: method || 'POST',
+      headers: headers || {},
+      body: body ? JSON.stringify(body) : undefined,
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      return { ok: false, status: response.status, statusText: response.statusText, body: errorText };
+    }
+
+    // Return binary audio as base64
+    const buffer = await response.arrayBuffer();
+    const base64 = Buffer.from(buffer).toString('base64');
+    return { ok: true, status: response.status, statusText: response.statusText, body: base64 };
+  } catch (error) {
+    return { ok: false, status: 0, statusText: error.message, body: null };
   }
 });
 
@@ -414,6 +519,21 @@ ipcMain.handle('safe-storage-encrypt', (event, plaintext) => {
 const decryptCallTimestamps = [];
 const DECRYPT_MAX_CALLS = 10;
 const DECRYPT_WINDOW_MS = 60_000; // 1 minute
+
+// Desktop notifications
+ipcMain.handle('show-notification', async (_event, { title, body, icon }) => {
+  if (Notification.isSupported()) {
+    const notification = new Notification({ 
+      title, 
+      body,
+      icon: icon || undefined,
+      silent: false
+    });
+    notification.show();
+    return true;
+  }
+  return false;
+});
 
 ipcMain.handle('safe-storage-decrypt', (event, encrypted) => {
   if (!safeStorage.isEncryptionAvailable()) {
@@ -459,6 +579,14 @@ app.whenReady().then(() => {
 
   createWindow();
   createYouTubeMusicWindow();
+  createTray();
+  registerMediaKeys();
+});
+
+app.on('before-quit', () => {
+  app.isQuitting = true;
+  globalShortcut.unregisterAll();
+  if (tray) { tray.destroy(); tray = null; }
 });
 
 app.on('window-all-closed', () => {

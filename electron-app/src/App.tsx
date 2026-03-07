@@ -12,6 +12,7 @@ import TestModeIndicator from './components/TestModeIndicator';
 import { TrackProgressBar } from './components/TrackProgressBar';
 import { VolumeControl } from './components/VolumeControl';
 import { OnboardingWizard } from './components/OnboardingWizard';
+import { useToast } from './components/Toast';
 const AudioVisualizer = lazy(() => import('./components/AudioVisualizer').then(m => ({ default: m.AudioVisualizer })));
 import { getMusicProvider, getTTSService, getAICommentaryService, container } from './config/container';
 import { isTestMode } from './config/testMode';
@@ -28,7 +29,10 @@ function MainApp() {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [currentTrack, setCurrentTrack] = useState<Track | null>(null);
-  const [playlist, setPlaylist] = useState<Track[]>([]);
+  const [playlist, setPlaylist] = useState<Track[]>(() => {
+    const saved = localStorage.getItem('djai_playlist');
+    return saved ? JSON.parse(saved) : [];
+  });
   const [djCommentary, setDjCommentary] = useState(
     'Welcome to DJ.ai! Connect a music provider to get started. 🎵'
   );
@@ -49,8 +53,9 @@ function MainApp() {
       openaiApiKey: '',
       anthropicApiKey: '',
       elevenLabsApiKey: '',
+      geminiApiKey: '',
       ttsEnabled: false,
-      ttsProvider: 'openai',
+      ttsProvider: 'web-speech',
       ttsVoice: 'onyx',
       autoDJMode: false
     };
@@ -67,6 +72,8 @@ function MainApp() {
     setShowOnboarding(false);
   }, []);
 
+  const { showToast } = useToast();
+
   // Load API keys asynchronously (safeStorage is async in Electron)
   useEffect(() => {
     getApiKeys().then(secrets => {
@@ -75,6 +82,7 @@ function MainApp() {
         openaiApiKey: secrets.openaiApiKey || prev.openaiApiKey,
         anthropicApiKey: secrets.anthropicApiKey || prev.anthropicApiKey,
         elevenLabsApiKey: secrets.elevenLabsApiKey || prev.elevenLabsApiKey,
+        geminiApiKey: secrets.geminiApiKey || prev.geminiApiKey,
       }));
     });
   }, []);
@@ -87,24 +95,93 @@ function MainApp() {
 
   // Refs to avoid stale closures inside YouTube player event handlers
   const autoDJModeRef = useRef(settings.autoDJMode);
+  const ttsEnabledRef = useRef(settings.ttsEnabled);
+  const isTransitioningRef = useRef(false);
   const playlistRef = useRef(playlist);
   const currentTrackRef = useRef(currentTrack);
 
+  // Look-ahead pre-generation cache for seamless DJ transitions
+  const preGenCacheRef = useRef<{
+    trackId: string;
+    commentary: string;
+    audioBlob: Blob | null;
+  } | null>(null);
+
   useEffect(() => { autoDJModeRef.current = settings.autoDJMode; }, [settings.autoDJMode]);
+  useEffect(() => { ttsEnabledRef.current = settings.ttsEnabled; }, [settings.ttsEnabled]);
   useEffect(() => { playlistRef.current = playlist; }, [playlist]);
   useEffect(() => { currentTrackRef.current = currentTrack; }, [currentTrack]);
 
-  // Escape key dismisses search results and settings
+  // Persist playlist to localStorage
   useEffect(() => {
-    const handleEscape = (e: KeyboardEvent) => {
+    localStorage.setItem('djai_playlist', JSON.stringify(playlist));
+  }, [playlist]);
+
+  // Global keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      const isTyping = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
+
+      // Escape always works (close modals/search/fullscreen)
       if (e.key === 'Escape') {
-        if (searchResults.length > 0) setSearchResults([]);
+        if (isFullscreen) setIsFullscreen(false);
+        else if (searchResults.length > 0) setSearchResults([]);
         else if (showSettings) setShowSettings(false);
+        return;
+      }
+
+      // All other shortcuts are suppressed when typing in an input
+      if (isTyping) return;
+
+      switch (e.key) {
+        case ' ':
+          e.preventDefault();
+          handlePlayPause();
+          break;
+        case 'ArrowRight':
+          handleNext();
+          break;
+        case 'ArrowLeft':
+          handlePrevious();
+          break;
+        case 'ArrowUp':
+          e.preventDefault();
+          if (playerRef.current?.getVolume && playerRef.current?.setVolume) {
+            const vol = Math.min(100, (playerRef.current.getVolume() ?? 80) + 10);
+            playerRef.current.setVolume(vol);
+          }
+          break;
+        case 'ArrowDown':
+          e.preventDefault();
+          if (playerRef.current?.getVolume && playerRef.current?.setVolume) {
+            const vol = Math.max(0, (playerRef.current.getVolume() ?? 80) - 10);
+            playerRef.current.setVolume(vol);
+          }
+          break;
+        case 'm':
+        case 'M':
+          if (playerRef.current?.isMuted && playerRef.current?.mute && playerRef.current?.unMute) {
+            playerRef.current.isMuted() ? playerRef.current.unMute() : playerRef.current.mute();
+          }
+          break;
+        case 's':
+        case 'S':
+          setShowSettings(prev => !prev);
+          break;
+        case 'f':
+        case 'F':
+          setIsFullscreen(prev => !prev);
+          break;
+        case '/':
+          e.preventDefault();
+          document.querySelector<HTMLInputElement>('.search-input')?.focus();
+          break;
       }
     };
-    window.addEventListener('keydown', handleEscape);
-    return () => window.removeEventListener('keydown', handleEscape);
-  }, [searchResults.length, showSettings]);
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [searchResults.length, showSettings, isFullscreen]);
 
   // Initialize providers
   useEffect(() => {
@@ -143,6 +220,7 @@ function MainApp() {
           }
         } catch (e) {
           console.warn('Failed to rehydrate YouTube provider:', e);
+          showToast('Could not restore YouTube session', 'warning');
         }
       }
 
@@ -159,6 +237,7 @@ function MainApp() {
           }
         } catch (e) {
           console.warn('Failed to rehydrate Spotify provider:', e);
+          showToast('Could not restore Spotify session', 'warning');
         }
       }
 
@@ -174,6 +253,7 @@ function MainApp() {
           }
         } catch (e) {
           console.warn('Failed to rehydrate Apple Music provider:', e);
+          showToast('Could not restore Apple Music session', 'warning');
         }
       }
     };
@@ -230,11 +310,71 @@ function MainApp() {
     if (event.data === 0) {
       // Track ended — read from refs to get current values
       if (autoDJModeRef.current) {
-        handleNext();
+        handleAutoDJTransition();
       }
     }
     else if (event.data === 1) setIsPlaying(true);
     else if (event.data === 2) setIsPlaying(false);
+  };
+
+  /** Auto-DJ: use pre-generated cache for seamless transitions, fallback to live generation */
+  const handleAutoDJTransition = async () => {
+    if (isTransitioningRef.current) return;
+    isTransitioningRef.current = true;
+    try {
+      const pl = playlistRef.current;
+      const ct = currentTrackRef.current;
+      if (!pl.length || !ct) { handleNext(); return; }
+
+      const currentIndex = pl.findIndex(t => t.id === ct.id);
+      const nextTrack = currentIndex >= 0 && currentIndex < pl.length - 1
+        ? pl[currentIndex + 1] : null;
+      if (!nextTrack) { handleNext(); return; }
+
+      // Check if pre-generation completed for this track
+      const cached = preGenCacheRef.current;
+      if (cached && cached.trackId === nextTrack.id) {
+        // Cache hit — near-instant transition
+        setDjCommentary(cached.commentary);
+        if (ttsEnabledRef.current && container.has('ttsService')) {
+          const ttsService = getTTSService();
+          try {
+            if (cached.audioBlob && ttsService.speakFromBlob) {
+              await ttsService.speakFromBlob(cached.audioBlob);
+            } else {
+              await ttsService.speak(cached.commentary);
+            }
+          } catch { /* continue */ }
+        }
+        preGenCacheRef.current = null;
+        handlePlayTrack(nextTrack);
+        return;
+      }
+
+      // Cache miss — generate live with 3s timeout
+      let announcement = `Coming up next: ${nextTrack.name} by ${nextTrack.artist}`;
+      if (container.has('aiCommentaryService')) {
+        const aiService = getAICommentaryService();
+        if (aiService) {
+          try {
+            const result = await Promise.race([
+              aiService.generateCommentary(nextTrack.name, nextTrack.artist, nextTrack.album),
+              new Promise<null>(r => setTimeout(() => r(null), 3000)),
+            ]);
+            if (result) announcement = result.text;
+          } catch { /* use fallback */ }
+        }
+      }
+      setDjCommentary(announcement);
+
+      if (ttsEnabledRef.current && container.has('ttsService')) {
+        try { await getTTSService().speak(announcement); } catch { /* continue */ }
+      }
+
+      handlePlayTrack(nextTrack);
+    } finally {
+      isTransitioningRef.current = false;
+    }
   };
 
   const handleSearch = async () => {
@@ -281,77 +421,128 @@ function MainApp() {
     const provider = currentProvider.current;
     if (!provider) return;
 
-    // Generate AI commentary if available
+    // Check pre-generation cache for this track
+    const cached = preGenCacheRef.current;
     let announcement = `Now playing: ${track.name} by ${track.artist}`;
-    
-    if (container.has('aiCommentaryService')) {
+    let cachedAudioBlob: Blob | null = null;
+
+    if (cached && cached.trackId === track.id) {
+      announcement = cached.commentary;
+      cachedAudioBlob = cached.audioBlob;
+      preGenCacheRef.current = null;
+    } else if (container.has('aiCommentaryService')) {
       const aiService = getAICommentaryService();
       if (aiService) {
         try {
           const commentary = await aiService.generateCommentary(
-            track.name,
-            track.artist,
-            track.album
+            track.name, track.artist, track.album
           );
           announcement = commentary.text;
         } catch (error) {
           console.warn('AI commentary generation failed:', error);
-          // Stick with simple announcement
+          showToast('AI commentary unavailable', 'warning');
         }
       }
     }
 
-    // Display the commentary
     setDjCommentary(announcement);
 
-    // Speak it if TTS is enabled
+    // Speak with volume ducking
     if (settings.ttsEnabled && container.has('ttsService')) {
       const ttsService = getTTSService();
       try {
-        await ttsService.speak(announcement);
+        const player = playerRef.current;
+        const savedVolume = player?.getVolume?.() ?? 80;
+        if (player?.setVolume) player.setVolume(Math.round(savedVolume * 0.2));
+
+        if (cachedAudioBlob && ttsService.speakFromBlob) {
+          await ttsService.speakFromBlob(cachedAudioBlob);
+        } else {
+          await ttsService.speak(announcement);
+        }
+
+        if (player?.setVolume) player.setVolume(savedVolume);
       } catch (error) {
         console.warn('TTS failed:', error);
+        showToast('Text-to-speech failed', 'warning');
+        const player = playerRef.current;
+        const saved = localStorage.getItem('djai_volume');
+        if (player?.setVolume) player.setVolume(saved ? parseInt(saved, 10) : 80);
       }
     }
 
     // Build a SearchResult from the Track to call the provider interface.
-    // Track.id maps to the provider-specific track identifier.
     let searchResult: SearchResult;
     if (settings.currentProvider === 'spotify') {
-      searchResult = {
-        id: track.id,
-        title: track.name,
-        artist: track.artist,
-        providerData: { uri: `spotify:track:${track.id}` }
-      };
+      searchResult = { id: track.id, title: track.name, artist: track.artist, providerData: { uri: `spotify:track:${track.id}` } };
     } else if (settings.currentProvider === 'apple') {
-      searchResult = {
-        id: track.id,
-        title: track.name,
-        artist: track.artist,
-        providerData: { appleMusicId: track.id }
-      };
+      searchResult = { id: track.id, title: track.name, artist: track.artist, providerData: { appleMusicId: track.id } };
     } else {
-      searchResult = {
-        id: track.id,
-        title: track.name,
-        artist: track.artist,
-        providerData: { videoId: track.id }
-      };
+      searchResult = { id: track.id, title: track.name, artist: track.artist, providerData: { videoId: track.id } };
     }
 
     try {
       const playbackId = await provider.playTrack(searchResult);
-
-      // YouTube-specific: drive the iframe player with the returned video ID
       if (settings.currentProvider === 'youtube' && playerRef.current) {
         playerRef.current.loadVideoById(playbackId);
       }
-
       setIsPlaying(true);
+
+      // Desktop notification (when minimized) and system tray update
+      window.electron?.notifications?.show({
+        title: track.name,
+        body: `${track.artist}${track.album ? ' — ' + track.album : ''}`,
+        icon: track.albumArtUrl || undefined,
+      });
+      window.electron?.tray?.updateInfo({
+        title: track.name,
+        artist: track.artist,
+        isPlaying: true,
+      });
+
+      // Kick off look-ahead pre-generation for the next track
+      preGenerateNextTrack(track);
     } catch {
       setDjCommentary(`Could not play`);
+      showToast('Playback failed', 'error');
     }
+  };
+
+  /** Pre-generate commentary + TTS audio for the next track in background */
+  const preGenerateNextTrack = (nowPlaying: Track) => {
+    const pl = playlistRef.current;
+    const idx = pl.findIndex(t => t.id === nowPlaying.id);
+    const nextTrack = idx >= 0 && idx < pl.length - 1 ? pl[idx + 1] : null;
+    if (!nextTrack) return;
+
+    (async () => {
+      try {
+        let commentary = `Coming up next: ${nextTrack.name} by ${nextTrack.artist}`;
+        if (container.has('aiCommentaryService')) {
+          const aiService = getAICommentaryService();
+          if (aiService) {
+            const result = await aiService.generateCommentary(nextTrack.name, nextTrack.artist, nextTrack.album);
+            commentary = result.text;
+          }
+        }
+
+        let audioBlob: Blob | null = null;
+        if (container.has('ttsService')) {
+          const ttsService = getTTSService();
+          if (ttsService.renderToBlob) {
+            audioBlob = await ttsService.renderToBlob(commentary);
+          }
+        }
+
+        // Only cache if playlist hasn't shifted
+        if (playlistRef.current.findIndex(t => t.id === nowPlaying.id) >= 0) {
+          preGenCacheRef.current = { trackId: nextTrack.id, commentary, audioBlob };
+          console.log(`[DJ] Pre-generated commentary for: ${nextTrack.name}`);
+        }
+      } catch (error) {
+        console.warn('[DJ] Pre-generation failed (non-fatal):', error);
+      }
+    })();
   };
 
   const handlePlayPause = () => {
@@ -364,6 +555,7 @@ function MainApp() {
         playerRef.current.pauseVideo();
       }
       setIsPlaying(false);
+      window.electron?.tray?.updateInfo({ title: currentTrack?.name || 'DJ.ai', artist: currentTrack?.artist || '', isPlaying: false });
     } else {
       if (!currentTrack && playlist.length > 0) {
         handlePlayTrack(playlist[0]);
@@ -374,6 +566,7 @@ function MainApp() {
           playerRef.current.playVideo();
         }
         setIsPlaying(true);
+        window.electron?.tray?.updateInfo({ title: currentTrack?.name || 'DJ.ai', artist: currentTrack?.artist || '', isPlaying: true });
       }
     }
   };
@@ -429,6 +622,7 @@ function MainApp() {
     if (!provider) {
       console.error('Failed to create provider');
       setDjCommentary('❌ Failed to initialize provider');
+      showToast('Failed to initialize music provider', 'error');
       return;
     }
 
@@ -555,6 +749,14 @@ function MainApp() {
     }
   }, []); // Empty dependency array - run once on mount
 
+  // System tray playback controls (from tray context menu and media keys)
+  useEffect(() => {
+    if (!window.electron?.tray) return;
+    window.electron.tray.onPlaybackToggle(() => handlePlayPause());
+    window.electron.tray.onNextTrack(() => handleNext());
+    window.electron.tray.onPreviousTrack(() => handlePrevious());
+  }, []);
+
   const handleSettingsSave = (newSettings: SettingsConfig) => {
     setSettings(newSettings);
 
@@ -563,10 +765,11 @@ function MainApp() {
       openaiApiKey: newSettings.openaiApiKey,
       anthropicApiKey: newSettings.anthropicApiKey,
       elevenLabsApiKey: newSettings.elevenLabsApiKey,
+      geminiApiKey: newSettings.geminiApiKey,
     });
 
     // Strip secrets before writing the main settings blob
-    const { openaiApiKey: _o, anthropicApiKey: _a, elevenLabsApiKey: _e, ...safeSettings } = newSettings;
+    const { openaiApiKey: _o, anthropicApiKey: _a, elevenLabsApiKey: _e, geminiApiKey: _g, ...safeSettings } = newSettings;
     localStorage.setItem('djAiSettings', JSON.stringify(safeSettings));
     
     // Update current provider if API key changed
@@ -623,11 +826,12 @@ function MainApp() {
                   {settings.ttsEnabled && <div className="mode-badge" title="Text-to-Speech Enabled">🔊 TTS</div>}
                   {settings.autoDJMode && <div className="mode-badge" title="Auto-DJ Mode Active">🎧 Auto-DJ</div>}
                   <input 
-                    type="text" 
+                    type="text"
+                    className="search-input"
                     value={searchQuery} 
                     onChange={(e) => setSearchQuery(e.target.value)} 
                     onKeyDown={(e) => e.key === 'Enter' && handleSearch()} 
-                    placeholder="Search for music..."
+                    placeholder="Search for music... (press / to focus)"
                   />
                   <button onClick={handleSearch}>Search</button>
                   <button onClick={() => setShowSettings(true)} className="settings-btn" aria-label="Settings">⚙️ Settings</button>
@@ -736,7 +940,17 @@ function MainApp() {
 
               {!isFullscreen && (
                 <aside className="playlist" role="complementary" aria-label="Playlist">
-                  <h3>Playlist ({playlist.length})</h3>
+                  <div className="playlist-header">
+                    <h3>Playlist ({playlist.length})</h3>
+                    {playlist.length > 0 && (
+                      <button
+                        className="clear-playlist-btn"
+                        onClick={() => setPlaylist([])}
+                        aria-label="Clear playlist"
+                        title="Clear playlist"
+                      >🗑️</button>
+                    )}
+                  </div>
                   <ul>
                     {playlist.map((track, idx) => (
                       <li
@@ -762,6 +976,12 @@ function MainApp() {
                             <div className="playlist-track-artist">{track.artist}</div>
                           </div>
                         </div>
+                        <button
+                          className="remove-track-btn"
+                          onClick={(e) => { e.stopPropagation(); setPlaylist(prev => prev.filter((_, i) => i !== idx)); }}
+                          aria-label={`Remove ${track.name} from playlist`}
+                          title="Remove from playlist"
+                        >✕</button>
                       </li>
                     ))}
                   </ul>
@@ -815,7 +1035,6 @@ function MainApp() {
                 config={settings}
                 onSave={handleSettingsSave}
                 onClose={() => setShowSettings(false)}
-                copilotAvailable={false}
                 onConnectProvider={handleConnectProvider}
                 onDisconnectProvider={handleDisconnectProvider}
               />

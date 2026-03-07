@@ -101,22 +101,47 @@ az ad app create --display-name "DJ.ai GitHub Deploy"
 az ad sp create --id <appId>
 ```
 
-#### Step 2: Add a Federated Credential for GitHub Actions
+#### Step 2: Add Federated Credentials for GitHub Environments
+
+The deploy workflow uses GitHub **environments** (`staging` and `production`), so you
+need a federated credential for each:
 
 ```bash
+# Staging environment (auto-deploys on push to main)
 az ad app federated-credential create --id <appId> --parameters '{
-  "name": "github-main",
+  "name": "github-staging",
   "issuer": "https://token.actions.githubusercontent.com",
-  "subject": "repo:Macromullet/DJ.ai:ref:refs/heads/main",
+  "subject": "repo:Macromullet/DJ.ai:environment:staging",
   "audiences": ["api://AzureADTokenExchange"],
-  "description": "Deploy from main branch"
+  "description": "Deploy to staging environment"
+}'
+
+# Production environment (manual dispatch with approval gate)
+az ad app federated-credential create --id <appId> --parameters '{
+  "name": "github-production",
+  "issuer": "https://token.actions.githubusercontent.com",
+  "subject": "repo:Macromullet/DJ.ai:environment:production",
+  "audiences": ["api://AzureADTokenExchange"],
+  "description": "Deploy to production environment"
 }'
 ```
 
-> **Note:** The `subject` must match the branch that triggers the workflow.
-> For environment-based deployments, use `repo:Macromullet/DJ.ai:environment:production`.
+#### Step 3: Create GitHub Environments
 
-#### Step 3: Grant Permissions
+Go to repo → **Settings → Environments** and create two environments:
+
+| Environment | Purpose | Configuration |
+|-------------|---------|---------------|
+| `staging` | Auto-deploy on push to main | No approval required |
+| `production` | Manual deploy via workflow dispatch | Add **required reviewer** for approval gate |
+
+Both environments must exist before the deploy workflow can run — the federated
+credentials from Step 2 are bound to these environment names.
+
+#### Step 4: Grant Permissions
+
+These role assignments are subscription-wide, so they cover both staging and
+production resource groups:
 
 ```bash
 # Contributor role on the subscription (needed by azd to create resources)
@@ -132,7 +157,11 @@ az role assignment create \
   --scope /subscriptions/<subscription-id>
 ```
 
-#### Step 4: Set GitHub Secrets
+> **Tighter scoping (optional):** If you prefer least-privilege, create the resource
+> groups first (`az group create -n rg-staging ...` / `az group create -n rg-production ...`)
+> and scope the role assignments to each RG instead of the subscription.
+
+#### Step 5: Set GitHub Secrets
 
 Go to your repo → **Settings → Secrets and variables → Actions** and add:
 
@@ -142,7 +171,7 @@ Go to your repo → **Settings → Secrets and variables → Actions** and add:
 | `AZURE_TENANT_ID` | `az account show --query tenantId -o tsv` |
 | `AZURE_SUBSCRIPTION_ID` | `az account show --query id -o tsv` |
 
-#### Step 5: Set GitHub Variables
+#### Step 6: Set GitHub Variables
 
 Same page, switch to the **Variables** tab:
 
@@ -150,6 +179,18 @@ Same page, switch to the **Variables** tab:
 |----------|-------------|
 | `AZURE_LOCATION` | Azure region (default: `eastus2`) |
 | `PRODUCTION_OAUTH_PROXY_URL` | Production OAuth proxy URL (for Electron builds) |
+
+### Resource Group Separation
+
+`azd` creates **separate resource groups per environment** automatically:
+
+| Environment | Resource Group | Trigger | Resources |
+|-------------|----------------|---------|-----------|
+| Staging | `rg-staging` | Push to `main` (oauth-proxy/infra changes) | Function App, Key Vault, Redis |
+| Production | `rg-production` | Manual workflow dispatch + approval | Function App, Key Vault, Redis |
+
+Each environment gets its own isolated set of resources — there is no sharing
+between staging and production.
 
 ### Code Signing Secrets (Optional)
 

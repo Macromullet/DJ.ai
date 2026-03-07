@@ -7,6 +7,9 @@ param location string
 @description('Tags to apply to the Key Vault')
 param tags object
 
+@description('Disable public network access (requires private endpoints)')
+param disablePublicAccess bool = false
+
 resource keyVault 'Microsoft.KeyVault/vaults@2023-07-01' = {
   name: name
   location: location
@@ -18,9 +21,9 @@ resource keyVault 'Microsoft.KeyVault/vaults@2023-07-01' = {
     enableSoftDelete: true
     enablePurgeProtection: true
     softDeleteRetentionInDays: 7
-    publicNetworkAccess: 'disabled'
+    publicNetworkAccess: disablePublicAccess ? 'disabled' : 'enabled'
     networkAcls: {
-      defaultAction: 'Deny'
+      defaultAction: disablePublicAccess ? 'Deny' : 'Allow'
       bypass: 'AzureServices'
     }
   }

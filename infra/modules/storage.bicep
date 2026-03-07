@@ -7,6 +7,9 @@ param location string
 @description('Tags to apply to the storage account')
 param tags object
 
+@description('Disable public network access (requires private endpoints)')
+param disablePublicAccess bool = false
+
 resource storage 'Microsoft.Storage/storageAccounts@2023-05-01' = {
   name: name
   location: location
@@ -18,9 +21,9 @@ resource storage 'Microsoft.Storage/storageAccounts@2023-05-01' = {
     supportsHttpsTrafficOnly: true
     allowSharedKeyAccess: false
     allowBlobPublicAccess: false
-    publicNetworkAccess: 'Disabled'
+    publicNetworkAccess: disablePublicAccess ? 'Disabled' : 'Enabled'
     networkAcls: {
-      defaultAction: 'Deny'
+      defaultAction: disablePublicAccess ? 'Deny' : 'Allow'
       bypass: 'AzureServices'
     }
   }

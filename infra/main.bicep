@@ -17,6 +17,9 @@ param location string = resourceGroup().location
 @description('Environment name (dev, staging, prod)')
 param environmentName string
 
+@description('Use premium plan with VNet integration and private endpoints. Default false (Consumption/Y1 for dev).')
+param usePremiumPlan bool = false
+
 @description('Comma-separated list of allowed OAuth redirect hosts for production (e.g., your-app.azurestaticapps.net). Set via: azd env set ALLOWED_REDIRECT_HOSTS <host1,host2>')
 param allowedRedirectHosts string = ''
 
@@ -31,10 +34,10 @@ var tags = {
 }
 
 // ---------------------------------------------------------------------------
-// Networking — VNet, Private DNS Zones
+// Networking — VNet, Private DNS Zones (premium plan only)
 // ---------------------------------------------------------------------------
 
-module vnet 'modules/vnet.bicep' = {
+module vnet 'modules/vnet.bicep' = if (usePremiumPlan) {
   name: 'vnet'
   params: {
     name: 'vnet-${resourceToken}'
@@ -43,7 +46,7 @@ module vnet 'modules/vnet.bicep' = {
   }
 }
 
-module dnsZones 'modules/private-dns-zones.bicep' = {
+module dnsZones 'modules/private-dns-zones.bicep' = if (usePremiumPlan) {
   name: 'private-dns-zones'
   params: {
     vnetId: vnet.outputs.id
@@ -84,6 +87,7 @@ module storage 'modules/storage.bicep' = {
     name: 'st${resourceToken}'
     location: location
     tags: tags
+    disablePublicAccess: usePremiumPlan
   }
 }
 
@@ -93,6 +97,7 @@ module redis 'modules/redis.bicep' = {
     name: 'redis-${resourceToken}'
     location: location
     tags: tags
+    disablePublicAccess: usePremiumPlan
   }
 }
 
@@ -102,14 +107,16 @@ module keyVault 'modules/key-vault.bicep' = {
     name: 'kv-${resourceToken}'
     location: location
     tags: tags
+    disablePublicAccess: usePremiumPlan
   }
 }
 
 // ---------------------------------------------------------------------------
 // Private Endpoints — Storage (blob, queue, table), Key Vault, Redis
+// Only deployed with premium plan (VNet required)
 // ---------------------------------------------------------------------------
 
-module storageBlobPe 'modules/private-endpoint.bicep' = {
+module storageBlobPe 'modules/private-endpoint.bicep' = if (usePremiumPlan) {
   name: 'pe-storage-blob'
   params: {
     name: 'pe-stblob-${resourceToken}'
@@ -122,7 +129,7 @@ module storageBlobPe 'modules/private-endpoint.bicep' = {
   }
 }
 
-module storageQueuePe 'modules/private-endpoint.bicep' = {
+module storageQueuePe 'modules/private-endpoint.bicep' = if (usePremiumPlan) {
   name: 'pe-storage-queue'
   params: {
     name: 'pe-stqueue-${resourceToken}'
@@ -135,7 +142,7 @@ module storageQueuePe 'modules/private-endpoint.bicep' = {
   }
 }
 
-module storageTablePe 'modules/private-endpoint.bicep' = {
+module storageTablePe 'modules/private-endpoint.bicep' = if (usePremiumPlan) {
   name: 'pe-storage-table'
   params: {
     name: 'pe-sttable-${resourceToken}'
@@ -148,7 +155,7 @@ module storageTablePe 'modules/private-endpoint.bicep' = {
   }
 }
 
-module keyVaultPe 'modules/private-endpoint.bicep' = {
+module keyVaultPe 'modules/private-endpoint.bicep' = if (usePremiumPlan) {
   name: 'pe-key-vault'
   params: {
     name: 'pe-kv-${resourceToken}'
@@ -161,7 +168,7 @@ module keyVaultPe 'modules/private-endpoint.bicep' = {
   }
 }
 
-module redisPe 'modules/private-endpoint.bicep' = {
+module redisPe 'modules/private-endpoint.bicep' = if (usePremiumPlan) {
   name: 'pe-redis'
   params: {
     name: 'pe-redis-${resourceToken}'
@@ -190,7 +197,8 @@ module functionApp 'modules/function-app.bicep' = {
     storageAccountName: storage.outputs.name
     allowedRedirectHosts: allowedRedirectHosts
     allowedRedirectSchemes: 'djai'
-    functionsSubnetId: vnet.outputs.functionsSubnetId
+    usePremiumPlan: usePremiumPlan
+    functionsSubnetId: usePremiumPlan ? vnet.outputs.functionsSubnetId : ''
   }
 }
 
@@ -232,5 +240,5 @@ output AZURE_KEY_VAULT_NAME string = keyVault.outputs.name
 @description('Name of the Redis cache')
 output AZURE_REDIS_NAME string = redis.outputs.name
 
-@description('Name of the VNet')
-output AZURE_VNET_NAME string = vnet.outputs.name
+@description('Name of the VNet (empty when not using premium plan)')
+output AZURE_VNET_NAME string = usePremiumPlan ? vnet.outputs.name : ''

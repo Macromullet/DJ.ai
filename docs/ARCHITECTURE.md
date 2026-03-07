@@ -4,7 +4,7 @@ Complete architectural overview of the DJ.ai system.
 
 ## System Overview
 
-DJ.ai is an AI-powered music application that provides DJ-style commentary and recommendations across multiple music streaming platforms. Local development is orchestrated by **.NET Aspire**; production runs on **Azure** (Bicep IaC, deployed via `azd`).
+DJ.ai is an AI-powered music application that provides DJ-style commentary and recommendations across multiple music streaming platforms. Local development is orchestrated by **.NET Aspire**; production runs on **Azure** (Bicep IaC, deployed via `scripts\deploy-infrastructure.ps1` using `az` CLI).
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -63,28 +63,31 @@ Three pipelines in `.github/workflows/`:
 | Workflow | Trigger | Purpose |
 |----------|---------|---------|
 | `ci.yml` | Push/PR to `main` | Build & type-check backend + frontend, Electron packaging on all 3 OS |
-| `deploy-oauth-proxy.yml` | Push to `main` (oauth-proxy/infra paths) | Deploy to staging → production (with approval) via `azd` |
+| `deploy-oauth-proxy.yml` | Push to `main` (oauth-proxy/infra paths) | Deploy to staging → production (with approval) via `az` CLI |
 | `release-electron.yml` | `v*` tag push | Build Electron for Windows/macOS/Linux, create draft GitHub Release |
 
 ### Bicep Infrastructure (`infra/`)
 
-All Azure resources defined as code:
+All Azure resources defined as code. Bicep is the single source of truth — no JSON parameter files (gitignored).
 
 ```
 infra/
-├── main.bicep              # Root template
-├── main.parameters.json    # Parameter defaults
+├── main.bicep                  # Root template (hardened deployment)
 └── modules/
-    ├── function-app.bicep  # Azure Functions (OAuth Proxy)
-    ├── key-vault.bicep     # Secret storage
-    ├── redis.bicep         # Azure Cache for Redis
-    ├── storage.bicep       # Functions storage
-    ├── app-insights.bicep  # Telemetry
-    ├── log-analytics.bicep # Log aggregation
-    └── key-vault-access.bicep # RBAC
+    ├── vnet.bicep              # VNet with two subnets
+    ├── private-dns-zones.bicep # DNS zones for private endpoints
+    ├── private-endpoint.bicep  # Reusable PE module
+    ├── function-app.bicep      # Azure Functions (OAuth Proxy)
+    ├── key-vault.bicep         # Secret storage (RBAC, purge protection)
+    ├── key-vault-access.bicep  # MI role assignment
+    ├── redis.bicep             # Azure Cache for Redis (C1 Standard)
+    ├── storage.bicep           # Functions storage (no shared keys)
+    ├── storage-access.bicep    # MI role assignments (3 roles)
+    ├── app-insights.bicep      # Telemetry (local auth disabled)
+    └── log-analytics.bicep     # Log aggregation
 ```
 
-Deployed with `azd up` or the GitHub Actions deploy pipeline.
+Deployed with `.\scripts\deploy-infrastructure.ps1` or the GitHub Actions deploy pipeline.
 
 ## Architecture Decisions
 
@@ -230,10 +233,58 @@ Electron App        Music Provider API
 ## Security Model
 
 - **Client secrets** — Stored in Azure Key Vault, never exposed to client
-- **Managed Identity** — Function App authenticates to Key Vault without credentials
+- **Managed Identity** — Function App authenticates to all backing services without credentials
+- **Zero public access** — All data-plane traffic flows through private endpoints over VNet
+- **No shared keys** — Storage, Key Vault, and Redis use MI/AAD auth exclusively
 - **Device tokens** — GUID per client for rate limiting (not cryptographic auth)
 - **Rate limiting** — 1000 req/day, 100 req/hour per device (Redis-backed)
 - **State validation** — CSRF protection on OAuth flows (Redis-backed)
+
+## Azure Infrastructure Security Architecture
+
+The production Azure environment enforces a **zero-trust, zero-public-access** posture. All data-plane communication between resources flows through private endpoints on a dedicated VNet.
+
+### VNet Topology
+
+```
+VNet (10.0.0.0/16)
+│
+├── snet-functions (10.0.1.0/24)
+│   ├── Delegation: Microsoft.Web/serverFarms
+│   └── Function App (VNet-integrated)
+│       ├── HTTP/2 enabled
+│       ├── Remote debugging disabled
+│       ├── WEBSITE_RUN_FROM_PACKAGE=1
+│       └── System-assigned Managed Identity
+│
+└── snet-private-endpoints (10.0.2.0/24)
+    ├── PE → Storage Account (blob)    ──→ privatelink.blob.core.windows.net
+    ├── PE → Storage Account (queue)   ──→ privatelink.queue.core.windows.net
+    ├── PE → Storage Account (table)   ──→ privatelink.table.core.windows.net
+    ├── PE → Key Vault                 ──→ privatelink.vaultcore.azure.net
+    └── PE → Redis Cache               ──→ privatelink.redis.cache.windows.net
+```
+
+### Managed Identity Role Assignments
+
+All inter-resource auth uses the Function App's system-assigned Managed Identity. Role assignments are declared in Bicep (no portal clicks):
+
+| Target | Bicep Module | Roles |
+|--------|-------------|-------|
+| Storage Account | `storage-access.bicep` | Storage Blob Data Owner, Storage Account Contributor, Storage Queue Data Contributor |
+| Key Vault | `key-vault-access.bicep` | Key Vault Secrets User |
+
+### Resource Hardening Summary
+
+| Resource | Public Network Access | Auth Model | Additional |
+|----------|-----------------------|------------|------------|
+| **Storage Account** | Disabled | MI only (`allowSharedKeyAccess: false`) | `allowBlobPublicAccess: false` |
+| **Key Vault** | Disabled | Azure RBAC (no access policies) | Purge protection enabled |
+| **Redis** | Disabled | AAD auth via private endpoint | C1 Standard (required for AAD + PE) |
+| **App Insights** | — | `disableLocalAuth: true` | Workspace-based (Log Analytics) |
+| **Function App** | Public (HTTPS only) | MI for backend services | VNet-integrated, HTTP/2 |
+
+> **Note:** The Function App's public endpoint is intentionally accessible — it serves OAuth HTTP APIs to the Electron client app. All *backend* connections (Storage, Key Vault, Redis) are private.
 
 ## Deployment Architecture
 
@@ -250,14 +301,25 @@ Developer Machine (dotnet run --project DJai.AppHost)
 ### Production (Azure)
 
 ```
-Azure (provisioned by infra/main.bicep)
-├── Function App (OAuth Proxy)
-│   ├── Managed Identity → Key Vault
-│   └── Connection → Azure Cache for Redis
-├── Key Vault (OAuth client secrets)
-├── Azure Cache for Redis (state)
-├── Application Insights + Log Analytics
-└── Storage Account
+Azure (provisioned by infra/main.bicep → scripts\deploy-infrastructure.ps1)
+│
+├── VNet (10.0.0.0/16)
+│   ├── snet-functions (10.0.1.0/24)
+│   │   └── Function App (OAuth Proxy)
+│   │       ├── Managed Identity → Key Vault (via PE)
+│   │       ├── Managed Identity → Storage (via PE)
+│   │       └── Managed Identity → Redis (via PE)
+│   └── snet-private-endpoints (10.0.2.0/24)
+│       ├── PE: Storage (blob, queue, table)
+│       ├── PE: Key Vault
+│       └── PE: Redis
+│
+├── Private DNS Zones (blob, queue, table, vault, redis)
+├── Key Vault (OAuth client secrets — publicNetworkAccess: Disabled)
+├── Azure Cache for Redis C1 Standard (state — publicNetworkAccess: Disabled)
+├── Storage Account (Functions runtime — publicNetworkAccess: Disabled)
+├── Application Insights + Log Analytics (disableLocalAuth: true)
+└── Role Assignments (Bicep-managed: Blob Data Owner, Account Contributor, Queue Data Contributor)
 
 User Machine
 └── Electron App (distributed via GitHub Releases)

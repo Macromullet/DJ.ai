@@ -26,17 +26,18 @@ param allowedRedirectHosts string = ''
 @description('Allowed OAuth redirect URI schemes (e.g., djai)')
 param allowedRedirectSchemes string = 'djai'
 
-@description('Resource ID of the VNet subnet for Function App integration')
-param functionsSubnetId string
+@description('Resource ID of the VNet subnet for Function App integration. Empty string disables VNet integration (required for Consumption plan).')
+param functionsSubnetId string = ''
+
+@description('Use premium plan with VNet integration. Set to false for Consumption (Y1) plan.')
+param usePremiumPlan bool = false
+
 resource plan 'Microsoft.Web/serverfarms@2024-04-01' = {
   name: '${name}-plan'
   location: location
   tags: tags
-  kind: 'elastic'
-  sku: {
-    name: 'EP1'
-    tier: 'ElasticPremium'
-  }
+  kind: usePremiumPlan ? 'elastic' : 'functionapp'
+  sku: usePremiumPlan ? { name: 'EP1', tier: 'ElasticPremium' } : { name: 'Y1', tier: 'Dynamic' }
   properties: {
     reserved: true // Linux
   }
@@ -51,7 +52,7 @@ resource functionApp 'Microsoft.Web/sites@2024-04-01' = {
   properties: {
     serverFarmId: plan.id
     httpsOnly: true
-    virtualNetworkSubnetId: functionsSubnetId
+    virtualNetworkSubnetId: usePremiumPlan ? functionsSubnetId : null
     siteConfig: {
       linuxFxVersion: 'DOTNET-ISOLATED|8.0'
       ftpsState: 'Disabled'
@@ -59,7 +60,7 @@ resource functionApp 'Microsoft.Web/sites@2024-04-01' = {
       http20Enabled: true
       remoteDebuggingEnabled: false
       detailedErrorLoggingEnabled: false
-      vnetRouteAllEnabled: true
+      vnetRouteAllEnabled: usePremiumPlan
       cors: {
         allowedOrigins: [
           'https://*.azurestaticapps.net'

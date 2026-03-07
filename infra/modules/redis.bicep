@@ -7,14 +7,14 @@ param location string
 @description('Tags to apply to the Redis cache')
 param tags object
 
-// NOTE: Upgraded from Basic C0 to Standard C1 because:
-//   - Basic tier does NOT support private endpoints (required for network isolation)
-//   - Basic tier does NOT support VNet integration
-//   - Standard tier adds replication and SLA guarantees
-// AAD/Entra ID authentication is supported on Standard tier, but the Azure Functions
-// Redis extension does not yet support MI-based token authentication natively.
-// TODO: Switch to MI-based Redis auth when the Functions Redis trigger supports it.
-//       Track: https://github.com/Azure/azure-functions-redis-extension/issues
+@description('Disable public network access (requires private endpoints)')
+param disablePublicAccess bool = false
+
+// NOTE: Standard C1 is needed for private endpoints and AAD auth support.
+// For dev (no private endpoints), Basic C0 is cheaper but Standard is kept
+// for consistency. AAD/Entra ID auth is enabled but the Azure Functions Redis
+// extension doesn't yet support MI-based token auth natively.
+// TODO: Switch to MI-based Redis auth when Functions Redis trigger supports it.
 resource redis 'Microsoft.Cache/redis@2024-03-01' = {
   name: name
   location: location
@@ -27,7 +27,7 @@ resource redis 'Microsoft.Cache/redis@2024-03-01' = {
     }
     enableNonSslPort: false
     minimumTlsVersion: '1.2'
-    publicNetworkAccess: 'Disabled'
+    publicNetworkAccess: disablePublicAccess ? 'Disabled' : 'Enabled'
     redisConfiguration: {
       'aad-enabled': 'True'
     }

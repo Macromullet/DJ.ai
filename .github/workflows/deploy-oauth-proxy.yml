@@ -1,6 +1,12 @@
 name: Deploy OAuth Proxy
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - 'oauth-proxy/**'
+      - 'infra/**'
+      - '.github/workflows/deploy-oauth-proxy.yml'
   workflow_dispatch:
     inputs:
       environment:

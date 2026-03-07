@@ -28,7 +28,10 @@ function MainApp() {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [currentTrack, setCurrentTrack] = useState<Track | null>(null);
-  const [playlist, setPlaylist] = useState<Track[]>([]);
+  const [playlist, setPlaylist] = useState<Track[]>(() => {
+    const saved = localStorage.getItem('djai_playlist');
+    return saved ? JSON.parse(saved) : [];
+  });
   const [djCommentary, setDjCommentary] = useState(
     'Welcome to DJ.ai! Connect a music provider to get started. 🎵'
   );
@@ -106,17 +109,76 @@ function MainApp() {
   useEffect(() => { playlistRef.current = playlist; }, [playlist]);
   useEffect(() => { currentTrackRef.current = currentTrack; }, [currentTrack]);
 
-  // Escape key dismisses search results and settings
+  // Persist playlist to localStorage
   useEffect(() => {
-    const handleEscape = (e: KeyboardEvent) => {
+    localStorage.setItem('djai_playlist', JSON.stringify(playlist));
+  }, [playlist]);
+
+  // Global keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      const isTyping = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
+
+      // Escape always works (close modals/search/fullscreen)
       if (e.key === 'Escape') {
-        if (searchResults.length > 0) setSearchResults([]);
+        if (isFullscreen) setIsFullscreen(false);
+        else if (searchResults.length > 0) setSearchResults([]);
         else if (showSettings) setShowSettings(false);
+        return;
+      }
+
+      // All other shortcuts are suppressed when typing in an input
+      if (isTyping) return;
+
+      switch (e.key) {
+        case ' ':
+          e.preventDefault();
+          handlePlayPause();
+          break;
+        case 'ArrowRight':
+          handleNext();
+          break;
+        case 'ArrowLeft':
+          handlePrevious();
+          break;
+        case 'ArrowUp':
+          e.preventDefault();
+          if (playerRef.current?.getVolume && playerRef.current?.setVolume) {
+            const vol = Math.min(100, (playerRef.current.getVolume() ?? 80) + 10);
+            playerRef.current.setVolume(vol);
+          }
+          break;
+        case 'ArrowDown':
+          e.preventDefault();
+          if (playerRef.current?.getVolume && playerRef.current?.setVolume) {
+            const vol = Math.max(0, (playerRef.current.getVolume() ?? 80) - 10);
+            playerRef.current.setVolume(vol);
+          }
+          break;
+        case 'm':
+        case 'M':
+          if (playerRef.current?.isMuted && playerRef.current?.mute && playerRef.current?.unMute) {
+            playerRef.current.isMuted() ? playerRef.current.unMute() : playerRef.current.mute();
+          }
+          break;
+        case 's':
+        case 'S':
+          setShowSettings(prev => !prev);
+          break;
+        case 'f':
+        case 'F':
+          setIsFullscreen(prev => !prev);
+          break;
+        case '/':
+          e.preventDefault();
+          document.querySelector<HTMLInputElement>('.search-input')?.focus();
+          break;
       }
     };
-    window.addEventListener('keydown', handleEscape);
-    return () => window.removeEventListener('keydown', handleEscape);
-  }, [searchResults.length, showSettings]);
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [searchResults.length, showSettings, isFullscreen]);
 
   // Initialize providers
   useEffect(() => {
@@ -732,11 +794,12 @@ function MainApp() {
                   {settings.ttsEnabled && <div className="mode-badge" title="Text-to-Speech Enabled">🔊 TTS</div>}
                   {settings.autoDJMode && <div className="mode-badge" title="Auto-DJ Mode Active">🎧 Auto-DJ</div>}
                   <input 
-                    type="text" 
+                    type="text"
+                    className="search-input"
                     value={searchQuery} 
                     onChange={(e) => setSearchQuery(e.target.value)} 
                     onKeyDown={(e) => e.key === 'Enter' && handleSearch()} 
-                    placeholder="Search for music..."
+                    placeholder="Search for music... (press / to focus)"
                   />
                   <button onClick={handleSearch}>Search</button>
                   <button onClick={() => setShowSettings(true)} className="settings-btn" aria-label="Settings">⚙️ Settings</button>
@@ -845,7 +908,17 @@ function MainApp() {
 
               {!isFullscreen && (
                 <aside className="playlist" role="complementary" aria-label="Playlist">
-                  <h3>Playlist ({playlist.length})</h3>
+                  <div className="playlist-header">
+                    <h3>Playlist ({playlist.length})</h3>
+                    {playlist.length > 0 && (
+                      <button
+                        className="clear-playlist-btn"
+                        onClick={() => setPlaylist([])}
+                        aria-label="Clear playlist"
+                        title="Clear playlist"
+                      >🗑️</button>
+                    )}
+                  </div>
                   <ul>
                     {playlist.map((track, idx) => (
                       <li
@@ -871,6 +944,12 @@ function MainApp() {
                             <div className="playlist-track-artist">{track.artist}</div>
                           </div>
                         </div>
+                        <button
+                          className="remove-track-btn"
+                          onClick={(e) => { e.stopPropagation(); setPlaylist(prev => prev.filter((_, i) => i !== idx)); }}
+                          aria-label={`Remove ${track.name} from playlist`}
+                          title="Remove from playlist"
+                        >✕</button>
                       </li>
                     ))}
                   </ul>

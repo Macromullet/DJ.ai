@@ -85,15 +85,66 @@ az keyvault secret set --vault-name <your-kv> --name SpotifyClientSecret --value
 
 ### GitHub Secrets (for CI/CD)
 
-Required **secrets** (repo → Settings → Secrets):
+GitHub Actions authenticates with Azure using **OIDC federation** — no long-lived
+passwords or client secrets. Instead, GitHub requests a short-lived token from its
+own identity provider, and Azure AD validates it against a federated credential
+tied to your repository.
 
-| Secret | Description |
-|--------|-------------|
-| `AZURE_CLIENT_ID` | Service principal client ID (federated credentials) |
-| `AZURE_TENANT_ID` | Azure AD tenant ID |
-| `AZURE_SUBSCRIPTION_ID` | Azure subscription ID |
+#### Step 1: Create an Azure AD App Registration
 
-Required **variables** (repo → Settings → Variables):
+```bash
+# Create the app registration
+az ad app create --display-name "DJ.ai GitHub Deploy"
+# Note the "appId" from the output — this becomes AZURE_CLIENT_ID
+
+# Create a service principal for it
+az ad sp create --id <appId>
+```
+
+#### Step 2: Add a Federated Credential for GitHub Actions
+
+```bash
+az ad app federated-credential create --id <appId> --parameters '{
+  "name": "github-main",
+  "issuer": "https://token.actions.githubusercontent.com",
+  "subject": "repo:Macromullet/DJ.ai:ref:refs/heads/main",
+  "audiences": ["api://AzureADTokenExchange"],
+  "description": "Deploy from main branch"
+}'
+```
+
+> **Note:** The `subject` must match the branch that triggers the workflow.
+> For environment-based deployments, use `repo:Macromullet/DJ.ai:environment:production`.
+
+#### Step 3: Grant Permissions
+
+```bash
+# Contributor role on the subscription (needed by azd to create resources)
+az role assignment create \
+  --assignee <appId> \
+  --role Contributor \
+  --scope /subscriptions/<subscription-id>
+
+# Key Vault access (if not using Azure RBAC for Key Vault)
+az role assignment create \
+  --assignee <appId> \
+  --role "Key Vault Secrets Officer" \
+  --scope /subscriptions/<subscription-id>
+```
+
+#### Step 4: Set GitHub Secrets
+
+Go to your repo → **Settings → Secrets and variables → Actions** and add:
+
+| Secret | How to get the value |
+|--------|----------------------|
+| `AZURE_CLIENT_ID` | `appId` from Step 1 |
+| `AZURE_TENANT_ID` | `az account show --query tenantId -o tsv` |
+| `AZURE_SUBSCRIPTION_ID` | `az account show --query id -o tsv` |
+
+#### Step 5: Set GitHub Variables
+
+Same page, switch to the **Variables** tab:
 
 | Variable | Description |
 |----------|-------------|

@@ -56,7 +56,7 @@ Use **Electron** as the application shell, with React + TypeScript + Vite for th
 
 **Positive:**
 - Single codebase for all platforms
-- Huge ecosystem of web libraries (React, Three.js, Web Audio)
+- Huge ecosystem of web libraries (React, Web Audio, etc.)
 - Fast development iteration with hot reload
 - Consistent behavior across platforms (same Chromium engine)
 

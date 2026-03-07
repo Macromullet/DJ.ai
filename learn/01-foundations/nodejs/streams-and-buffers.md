@@ -70,7 +70,7 @@ analyser.getFloatFrequencyData(dataArray);
 // dataArray now contains frequency magnitudes in decibels
 ```
 
-DJ.ai's `AudioVisualizer` uses `Uint8Array` for frequency data:
+DJ.ai uses `Uint8Array` with the Web Audio API's `AnalyserNode.getByteFrequencyData()` for real-time audio analysis:
 
 ```typescript
 const dataArray = new Uint8Array(analyser.frequencyBinCount);
@@ -127,7 +127,6 @@ while (true) {
 - **`electron-app/electron/main.cjs`** — The `ai-tts-request` IPC handler fetches TTS audio from APIs, converts the response to a base64 string via `Buffer`, and returns it to the renderer; includes response size validation
 - **`electron-app/src/services/OpenAITTSService.ts`** — `renderToBlob()` method generates audio and returns a `Blob` for pre-caching; `speakFromBlob()` plays pre-rendered blobs
 - **`electron-app/src/services/ElevenLabsTTSService.ts`** — Same pattern: API response → `Blob` → `URL.createObjectURL` → `Audio.play()`
-- **`electron-app/src/components/AudioVisualizer.tsx`** — Uses `Uint8Array` with Web Audio API's `AnalyserNode.getByteFrequencyData()` for real-time frequency visualization
 - **`electron-app/src/App.tsx`** — `preGenCacheRef` stores pre-generated `Blob` objects for seamless track transitions
 
 ---

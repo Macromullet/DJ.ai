@@ -25,7 +25,7 @@
 | `test:` | Adding tests | `test: add Playwright E2E for onboarding` |
 | `chore:` | Maintenance | `chore: update dependencies` |
 | `style:` | Formatting | `style: fix indentation in tokens.css` |
-| `perf:` | Performance | `perf: lazy-load Three.js visualizer` |
+| `perf:` | Performance | `perf: optimize TTS audio pre-caching` |
 | `ci:` | CI/CD changes | `ci: add matrix build for Electron` |
 
 ### Breaking Changes

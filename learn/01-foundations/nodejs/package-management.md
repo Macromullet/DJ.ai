@@ -28,8 +28,7 @@ The `package.json` file is the manifest for a Node.js project. It declares the p
   "dependencies": {
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
-    "react-router-dom": "^7.13.0",
-    "three": "^0.182.0"
+    "react-router-dom": "^7.13.0"
   },
   "devDependencies": {
     "vite": "^5.4.11",
@@ -96,7 +95,7 @@ package-lock.json pins: "react": "19.2.4" (exact)
 
 ## 🔗 DJ.ai Connection
 
-- **`electron-app/package.json`** — Declares React 19, Vite 5, Electron 40, Three.js, Playwright, Vitest, and all other dependencies; defines all `npm run` scripts
+- **`electron-app/package.json`** — Declares React 19, Vite 5, Electron 40, Playwright, Vitest, and all other dependencies; defines all `npm run` scripts
 - **`electron-app/package-lock.json`** — Pins exact versions for reproducible builds across dev machines and CI
 - **`.github/workflows/ci.yml`** — CI runs `npm ci` (clean install from lock file) to ensure reproducibility
 - **`DJai.AppHost/Program.cs`** — Aspire uses `AddNpmApp()` to start the Vite dev server, relying on npm scripts

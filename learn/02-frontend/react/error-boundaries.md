@@ -2,7 +2,7 @@
 
 > Catching rendering errors gracefully — DJ.ai's safety net for unexpected failures.
 
-An Error Boundary is a React component that catches JavaScript errors during rendering, in lifecycle methods, and in constructors of the whole tree below it. It displays a fallback UI instead of crashing the entire app. DJ.ai wraps its entire component tree in an `ErrorBoundary` to ensure that a bug in one component (like the AudioVisualizer or Settings panel) doesn't bring down the whole application.
+An Error Boundary is a React component that catches JavaScript errors during rendering, in lifecycle methods, and in constructors of the whole tree below it. It displays a fallback UI instead of crashing the entire app. DJ.ai wraps its entire component tree in an `ErrorBoundary` to ensure that a bug in one component (like the Settings panel or OnboardingWizard) doesn't bring down the whole application.
 
 ---
 
@@ -107,7 +107,7 @@ The ErrorBoundary wraps the entire component tree at the top level:
 </ErrorBoundary>
 ```
 
-If `AudioVisualizer` throws during its Three.js render, or `Settings` fails to parse saved data, or `OnboardingWizard` encounters a bad state — the ErrorBoundary catches it and shows a recovery UI instead of a white screen.
+If `Settings` fails to parse saved data, or `OnboardingWizard` encounters a bad state — the ErrorBoundary catches it and shows a recovery UI instead of a white screen.
 
 ### Recovery Strategies
 
@@ -131,7 +131,6 @@ More advanced recovery could include:
 
 - **`electron-app/src/components/ErrorBoundary.tsx`** — Class component implementing `getDerivedStateFromError` and `componentDidCatch`; wraps the entire app tree
 - **`electron-app/src/App.tsx`** — ErrorBoundary is one of the outermost wrappers in the component hierarchy
-- **`electron-app/src/components/AudioVisualizer.tsx`** — Complex Three.js/WebGL code that could throw if browser doesn't support WebGL
 - **`electron-app/src/components/OAuthCallback.tsx`** — Could fail if OAuth state is corrupted; ErrorBoundary catches the render error
 
 ---

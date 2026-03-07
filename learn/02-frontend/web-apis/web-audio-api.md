@@ -1,8 +1,8 @@
 # Web Audio API
 
-> AudioContext, frequency analysis, and audio graphs — the technology behind DJ.ai's GPU visualizer.
+> AudioContext, audio graphs, and programmatic audio control — the technology behind DJ.ai's audio playback and TTS pipeline.
 
-The Web Audio API provides a powerful system for controlling audio in web applications. DJ.ai uses it to analyze audio frequency data in real time, feeding that data into a Three.js WebGL renderer to create GPU-accelerated visualizations (bars, waves, particles, rings) that react to the music. The API models audio processing as a **graph of nodes** connected together.
+The Web Audio API provides a powerful system for controlling audio in web applications. DJ.ai uses it for audio playback management, volume control via `GainNode`, and potential future audio analysis. The API models audio processing as a **graph of nodes** connected together.
 
 ---
 
@@ -28,7 +28,7 @@ document.addEventListener('click', () => {
 
 ### AnalyserNode
 
-The `AnalyserNode` provides real-time frequency and time-domain analysis — this is what powers DJ.ai's visualizer:
+The `AnalyserNode` provides real-time frequency and time-domain analysis — useful for audio metering and future visualization features:
 
 ```typescript
 // Create an analyser
@@ -49,7 +49,7 @@ function animate() {
   // dataArray[0] = bass, dataArray[127] = treble
   // Values 0-255 representing magnitude at each frequency
 
-  // Feed into Three.js visualization
+  // Feed into visualization or audio metering
   updateVisualization(dataArray);
 
   requestAnimationFrame(animate);
@@ -66,7 +66,7 @@ Audio Source (HTMLAudioElement / MediaStream)
      │
      ├──→ AnalyserNode (frequency analysis, no modification)
      │         │
-     │         └──→ [Data fed to AudioVisualizer (Three.js)]
+     │         └──→ [Data available for metering or visualization]
      │
      └──→ GainNode (volume control)
               │
@@ -98,38 +98,13 @@ The `fftSize` property controls the frequency resolution. A higher value gives m
 | 1024 | 512 | Detailed spectrum (slower) |
 | 2048 | 1024 | High-resolution analysis |
 
-### Visualization Modes in DJ.ai
-
-The `AudioVisualizer` component offers multiple visualization modes, each using the same frequency data differently:
-
-```typescript
-// Bars — height based on frequency magnitude
-bars.forEach((bar, i) => {
-  bar.scale.y = dataArray[i] / 255; // Normalize to 0-1
-});
-
-// Wave — vertex positions based on waveform
-analyser.getByteTimeDomainData(waveArray); // Time-domain data
-wave.geometry.setAttribute('position', /* waveform vertices */);
-
-// Particles — particle positions react to frequencies
-particles.forEach((p, i) => {
-  const freq = dataArray[i % analyser.frequencyBinCount];
-  p.position.y = freq / 255 * maxHeight;
-});
-
-// Rings — ring radius pulses with bass frequencies
-const bassEnergy = dataArray.slice(0, 4).reduce((a, b) => a + b) / 4;
-ring.scale.set(bassEnergy / 255, bassEnergy / 255, 1);
-```
-
 ---
 
 ## 🔗 DJ.ai Connection
 
-- **`electron-app/src/components/AudioVisualizer.tsx`** — Creates `AudioContext`, `AnalyserNode`, and connects them to the audio source; reads frequency data with `getByteFrequencyData()` in a `requestAnimationFrame` loop; renders with Three.js `WebGLRenderer`
-- **`electron-app/src/App.tsx`** — Manages the `AudioContext` lifecycle and passes it to the AudioVisualizer component
+- **`electron-app/src/App.tsx`** — Manages the `AudioContext` lifecycle for playback and TTS audio
 - **`electron-app/src/components/VolumeControl.tsx`** — Could use `GainNode` for precise volume control (currently uses HTML audio element volume)
+- **Future:** A planned GPU visualizer will use `AnalyserNode` and `getByteFrequencyData()` for real-time audio-reactive graphics
 
 ---
 
@@ -138,7 +113,7 @@ ring.scale.set(bassEnergy / 255, bassEnergy / 255, 1);
 - Web Audio API models audio processing as a **graph of connected nodes**
 - **`AnalyserNode`** provides real-time frequency data without modifying the audio stream
 - **`getByteFrequencyData()`** fills a `Uint8Array` with 0-255 frequency magnitudes
-- DJ.ai feeds this data into **Three.js** for GPU-accelerated visualization at 60fps
+- DJ.ai uses the Web Audio API for **audio playback and TTS**; a planned GPU visualizer will leverage `AnalyserNode` for audio-reactive graphics
 - `AudioContext` must be **resumed after user interaction** (browser autoplay policy)
 - Higher `fftSize` = more frequency bins = more detail, but more computation
 

@@ -21,7 +21,7 @@ DJ.ai runs inside Electron's Chromium renderer, which means it has access to the
 
 | API | DJ.ai Usage |
 |-----|------------|
-| Web Audio API | AudioVisualizer uses `AnalyserNode` for real-time frequency data → Three.js GPU visualization |
+| Web Audio API | Powers audio playback, volume control, and TTS; `AnalyserNode` available for future visualization |
 | Web Speech API | WebSpeechTTSService uses `SpeechSynthesis` as a free TTS fallback |
 | URL / Blob | TTS services create audio Blobs, convert to object URLs for `Audio` element playback |
 | localStorage | OAuth tokens, settings, device token, volume, onboarding status |

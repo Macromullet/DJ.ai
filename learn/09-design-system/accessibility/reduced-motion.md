@@ -59,7 +59,7 @@ This is the **only place** in DJ.ai's codebase where `!important` is acceptable.
 
 ### JavaScript Consideration
 
-For JavaScript-driven animations (Three.js visualizer, complex sequences), check the preference programmatically:
+For JavaScript-driven animations (complex sequences, canvas rendering), check the preference programmatically:
 
 ```typescript
 const prefersReducedMotion = window.matchMedia(
@@ -73,7 +73,7 @@ if (prefersReducedMotion) {
 
 ## DJ.ai Connection
 
-The reduced-motion query in `base.css` is a safety net applied globally — no component needs to implement its own motion check for CSS animations. For the planned Three.js audio visualizer, a JavaScript check will also be needed to suppress WebGL animations. This aligns with DJ.ai's accessibility-first design philosophy.
+The reduced-motion query in `base.css` is a safety net applied globally — no component needs to implement its own motion check for CSS animations. For any future JavaScript-driven animations (e.g., a planned GPU visualizer), a separate `matchMedia` check will be needed to suppress canvas/WebGL animations. This aligns with DJ.ai's accessibility-first design philosophy.
 
 ## Key Takeaways
 

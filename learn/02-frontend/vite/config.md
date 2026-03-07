@@ -108,7 +108,6 @@ export default defineConfig({
         // Manual chunk splitting
         manualChunks: {
           vendor: ['react', 'react-dom', 'react-router-dom'],
-          three: ['three'],
         },
       },
     },

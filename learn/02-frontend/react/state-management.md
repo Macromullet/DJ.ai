@@ -14,7 +14,7 @@ State management is how a React app tracks and shares data across components. Wh
 App.tsx (state owner)
 ├── currentTrack        → TrackProgressBar, VolumeControl
 ├── playlist            → playlist display
-├── isPlaying           → play/pause button, AudioVisualizer
+├── isPlaying           → play/pause button, playback controls
 ├── searchQuery/Results → search bar, results list
 ├── settings            → Settings panel
 ├── showSettings        → Settings visibility toggle

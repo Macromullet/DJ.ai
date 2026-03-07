@@ -52,7 +52,7 @@ page.getByPlaceholder('Search for music...');
 ### By Test ID (Last Resort)
 
 ```typescript
-page.getByTestId('visualizer-canvas');
+page.getByTestId('track-progress-bar');
 ```
 
 ## Locator Chaining

@@ -61,14 +61,14 @@ Playwright is already configured but has zero test cases. Add end-to-end tests c
 "@
     },
     @{
-        Title = "GPU-accelerated audio visualizations (THREE.js/WebGL)"
+        Title = "GPU-accelerated audio visualizations (planned future feature)"
         Labels = "enhancement,high-priority"
         Body = @"
 ## Description
-Add immersive, GPU-accelerated audio visualizations that react to the currently playing music.
+Add immersive, GPU-accelerated audio visualizations that react to the currently playing music. This is a planned future feature — no visualizer component or Three.js dependency currently exists in the project.
 
 ### Requirements
-- [ ] WebGL/THREE.js based renderer
+- [ ] WebGL-based renderer (library TBD — Three.js or similar)
 - [ ] Audio frequency analysis via Web Audio API (AnalyserNode)
 - [ ] Multiple visualization modes (waveform, spectrum bars, particle field)
 - [ ] Fullscreen mode (existing fullscreen toggle should activate this)
@@ -76,8 +76,8 @@ Add immersive, GPU-accelerated audio visualizations that react to the currently 
 - [ ] Respects prefers-reduced-motion (static fallback)
 
 ### Notes
-- AudioVisualizer component already exists with basic canvas rendering
-- THREE.js should be lazy-loaded to avoid bundle bloat
+- The visualizer library should be lazy-loaded to avoid bundle bloat
+- Web Audio API learning material exists in learn/02-frontend/web-apis/web-audio-api.md
 "@
     },
     @{

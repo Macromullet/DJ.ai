@@ -130,7 +130,6 @@ Use **useRef** when:
 ## 🔗 DJ.ai Connection
 
 - **`electron-app/src/App.tsx`** — 9+ refs: `isPlayingRef`, `playlistRef`, `currentTrackRef`, `settingsRef`, `autoDJModeRef`, `ttsEnabledRef`, `isTransitioningRef`, `playRequestIdRef`, `preGenCacheRef`; all synced via `useEffect`
-- **`electron-app/src/components/AudioVisualizer.tsx`** — `useRef` for the Three.js `WebGLRenderer`, `Scene`, `Camera`, `AnalyserNode`, and canvas DOM element
 - **`electron-app/src/components/TrackProgressBar.tsx`** — `useRef` for the progress bar DOM element and dragging state
 - **`electron-app/src/components/VolumeControl.tsx`** — `useRef` for the slider DOM element
 

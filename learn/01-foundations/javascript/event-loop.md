@@ -89,14 +89,13 @@ console.log("C"); // Runs while playNextTrack is paused
 
 ### requestAnimationFrame
 
-For visual updates (like DJ.ai's audio visualizer), `requestAnimationFrame` runs callbacks before the browser's next repaint — approximately 60 times per second:
+For visual updates (like smooth animations), `requestAnimationFrame` runs callbacks before the browser's next repaint — approximately 60 times per second:
 
 ```typescript
-// From AudioVisualizer.tsx pattern
+// requestAnimationFrame pattern for smooth UI updates
 function animate() {
-  analyser.getByteFrequencyData(dataArray);
-  // Update Three.js scene with frequency data
-  renderer.render(scene, camera);
+  // Update UI elements at 60fps
+  updateProgress();
   requestAnimationFrame(animate); // Schedule next frame
 }
 requestAnimationFrame(animate);
@@ -127,7 +126,7 @@ When a user clicks "Next Track" in DJ.ai, here's what happens in event loop term
 
 5. Browser paint:
    → New track title appears on screen
-   → AudioVisualizer's requestAnimationFrame updates
+   → Any requestAnimationFrame callbacks run
 
 6. Meanwhile, auto-DJ lookahead (setTimeout callback):
    → Pre-generates commentary for the next track
@@ -141,7 +140,6 @@ All of this happens on a single thread, orchestrated by the event loop.
 ## 🔗 DJ.ai Connection
 
 - **`electron-app/src/App.tsx`** — Auto-DJ lookahead uses `setTimeout` (macrotask) to delay pre-generation; state updates trigger React microtask re-renders
-- **`electron-app/src/components/AudioVisualizer.tsx`** — `requestAnimationFrame` loop for 60fps GPU visualization
 - **`electron-app/src/services/WebSpeechTTSService.ts`** — `SpeechSynthesis.speak()` is async via browser event loop; `onend` fires as a macrotask callback
 - **`electron-app/electron/main.cjs`** — IPC message handling is event-loop-driven; `ipcMain.handle()` callbacks are scheduled as macrotasks
 - **`electron-app/src/components/Toast.tsx`** — Toast auto-dismiss uses `setTimeout` (macrotask) with cleanup in `useEffect`

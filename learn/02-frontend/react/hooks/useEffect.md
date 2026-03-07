@@ -171,7 +171,6 @@ useEffect(() => {
 - **`electron-app/src/components/OAuthCallback.tsx`** — `useEffect` with `[]` deps for one-time OAuth code exchange on mount
 - **`electron-app/src/components/OnboardingWizard.tsx`** — `useEffect` with polling interval (1.5s) to check provider auth status, with cleanup
 - **`electron-app/src/components/Toast.tsx`** — `useEffect` for auto-dismiss timers with cleanup via `clearTimeout`
-- **`electron-app/src/components/AudioVisualizer.tsx`** — `useEffect` for Three.js scene setup and `requestAnimationFrame` loop with cleanup (dispose renderer, geometry, materials)
 
 ---
 

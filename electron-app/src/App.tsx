@@ -1,8 +1,7 @@
-import { useState, useEffect, useRef, useCallback, Suspense, lazy } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { IMusicProvider, SearchResult } from './types/IMusicProvider';
 import { Track } from './types';
-import { YouTubeMusicProvider } from './providers/YouTubeMusicProvider';
 import { SpotifyProvider } from './providers/SpotifyProvider';
 import { AppleMusicProvider } from './providers/AppleMusicProvider';
 import { Settings, SettingsConfig } from './components/Settings';
@@ -13,17 +12,9 @@ import { TrackProgressBar } from './components/TrackProgressBar';
 import { VolumeControl } from './components/VolumeControl';
 import { OnboardingWizard } from './components/OnboardingWizard';
 import { useToast } from './components/Toast';
-const AudioVisualizer = lazy(() => import('./components/AudioVisualizer').then(m => ({ default: m.AudioVisualizer })));
 import { getMusicProvider, getTTSService, getAICommentaryService, container } from './config/container';
 import { isTestMode } from './config/testMode';
 import './App.css';
-
-declare global {
-  interface Window {
-    YT: any;
-    onYouTubeIframeAPIReady: () => void;
-  }
-}
 
 function MainApp() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -46,11 +37,10 @@ function MainApp() {
   
   const [settings, setSettings] = useState<SettingsConfig>(() => {
     const defaults: SettingsConfig = {
-      currentProvider: isTestMode() ? 'youtube' : 'youtube',
+      currentProvider: isTestMode() ? 'apple' : 'apple',
       providers: {
-        youtube: { isConnected: isTestMode() },
         spotify: { isConnected: false },
-        apple: { isConnected: false }
+        apple: { isConnected: isTestMode() }
       },
       aiProvider: 'openai',
       openaiApiKey: '',
@@ -98,10 +88,8 @@ function MainApp() {
   // Provider instances
   const providers = useRef<Map<string, IMusicProvider>>(new Map());
   const currentProvider = useRef<IMusicProvider | null>(null);
-  const playerRef = useRef<any>(null);
-  const playerDivRef = useRef<HTMLDivElement>(null);
 
-  // Refs to avoid stale closures inside YouTube player event handlers
+  // Refs to avoid stale closures inside player event handlers
   const autoDJModeRef = useRef(settings.autoDJMode);
   const ttsEnabledRef = useRef(settings.ttsEnabled);
   const isTransitioningRef = useRef(false);
@@ -160,23 +148,15 @@ function MainApp() {
           break;
         case 'ArrowUp':
           e.preventDefault();
-          if (playerRef.current?.getVolume && playerRef.current?.setVolume) {
-            const vol = Math.min(100, (playerRef.current.getVolume() ?? 80) + 10);
-            playerRef.current.setVolume(vol);
-          }
+          // Volume up handled by VolumeControl component
           break;
         case 'ArrowDown':
           e.preventDefault();
-          if (playerRef.current?.getVolume && playerRef.current?.setVolume) {
-            const vol = Math.max(0, (playerRef.current.getVolume() ?? 80) - 10);
-            playerRef.current.setVolume(vol);
-          }
+          // Volume down handled by VolumeControl component
           break;
         case 'm':
         case 'M':
-          if (playerRef.current?.isMuted && playerRef.current?.mute && playerRef.current?.unMute) {
-            playerRef.current.isMuted() ? playerRef.current.unMute() : playerRef.current.mute();
-          }
+          // Mute handled by VolumeControl component
           break;
         case 's':
         case 'S':
@@ -208,35 +188,6 @@ function MainApp() {
     }
 
     const initProviders = async () => {
-      // YouTube provider — prefer explicit settings, fall back to cached tokens
-      if (settings.providers.youtube.apiKey || settings.providers.youtube.accessToken) {
-        const ytProvider = new YouTubeMusicProvider({
-          apiKey: settings.providers.youtube.apiKey,
-          accessToken: settings.providers.youtube.accessToken,
-          refreshToken: settings.providers.youtube.refreshToken
-        });
-        providers.current.set('youtube', ytProvider);
-        
-        if (settings.currentProvider === 'youtube') {
-          currentProvider.current = ytProvider;
-        }
-      } else if (localStorage.getItem('djai_youtube_auth')) {
-        // Rehydrate from cached OAuth tokens (provider loads them in constructor)
-        try {
-          const ytProvider = new YouTubeMusicProvider();
-          await ytProvider.ensureAuthenticated();
-          if (ytProvider.isAuthenticated) {
-            providers.current.set('youtube', ytProvider);
-            if (settings.currentProvider === 'youtube') {
-              currentProvider.current = ytProvider;
-            }
-          }
-        } catch (e) {
-          console.warn('Failed to rehydrate YouTube provider:', e);
-          showToast('Could not restore YouTube session', 'warning');
-        }
-      }
-
       // Spotify provider — rehydrate from cached OAuth tokens
       if (localStorage.getItem('djai_spotify_auth')) {
         try {
@@ -272,63 +223,28 @@ function MainApp() {
     };
 
     initProviders();
-  }, [settings.currentProvider, settings.providers.youtube.apiKey, settings.providers.youtube.accessToken, settings.providers.youtube.refreshToken]);
-
-  // Initialize YouTube IFrame Player
-  useEffect(() => {
-    if (settings.currentProvider !== 'youtube') return;
-
-    const createPlayer = () => {
-      if (playerDivRef.current && !playerRef.current) {
-        playerRef.current = new window.YT.Player(playerDivRef.current, {
-          height: '100%',
-          width: '100%',
-          playerVars: { autoplay: 0, controls: 0, modestbranding: 1, rel: 0 },
-          events: { onStateChange: onPlayerStateChange }
-        });
-      }
-    };
-
-    // API already loaded — create player directly
-    if (window.YT && window.YT.Player) {
-      createPlayer();
-      return;
-    }
-
-    // Only inject the script tag once
-    const existingScript = document.querySelector('script[src*="youtube.com/iframe_api"]');
-    if (!existingScript) {
-      const tag = document.createElement('script');
-      tag.src = 'https://www.youtube.com/iframe_api';
-      document.head.appendChild(tag);
-    }
-
-    window.onYouTubeIframeAPIReady = () => {
-      createPlayer();
-    };
-
-    return () => {
-      // Nullify the callback so a stale closure doesn't fire
-      if (window.onYouTubeIframeAPIReady) {
-        window.onYouTubeIframeAPIReady = () => {};
-      }
-      if (playerRef.current) {
-        playerRef.current.destroy();
-        playerRef.current = null;
-      }
-    };
   }, [settings.currentProvider]);
 
-  const onPlayerStateChange = (event: any) => {
-    if (event.data === 0) {
-      // Track ended — read from refs to get current values
-      if (autoDJModeRef.current) {
-        handleAutoDJTransition();
-      }
-    }
-    else if (event.data === 1) setIsPlaying(true);
-    else if (event.data === 2) setIsPlaying(false);
-  };
+  // Poll provider playback state to detect track end
+  useEffect(() => {
+    if (!isPlaying) return;
+    const interval = window.setInterval(async () => {
+      const provider = currentProvider.current;
+      if (!provider) return;
+      try {
+        const state = await provider.getPlaybackState();
+        if (state && state.isPlaying === false && state.positionMs > 0 && state.durationMs > 0
+            && state.positionMs >= state.durationMs - 500) {
+          // Track ended
+          setIsPlaying(false);
+          if (autoDJModeRef.current) {
+            handleAutoDJTransition();
+          }
+        }
+      } catch { /* provider may not support getPlaybackState yet */ }
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [isPlaying]);
 
   /** Auto-DJ: use pre-generated cache for seamless transitions, fallback to live generation */
   const handleAutoDJTransition = async () => {
@@ -467,11 +383,7 @@ function MainApp() {
       // Speak with volume ducking
       if (settingsRef.current.ttsEnabled && container.has('ttsService')) {
         const ttsService = getTTSService();
-        const player = playerRef.current;
-        const savedVolume = player?.getVolume?.() ?? 80;
         try {
-          if (player?.setVolume) player.setVolume(Math.round(savedVolume * 0.2));
-
           if (cachedAudioBlob && ttsService.speakFromBlob) {
             await ttsService.speakFromBlob(cachedAudioBlob);
           } else {
@@ -480,8 +392,6 @@ function MainApp() {
         } catch (error) {
           console.warn('TTS failed:', error);
           showToast('Text-to-speech failed', 'warning');
-        } finally {
-          if (player?.setVolume) player.setVolume(savedVolume);
         }
         if (myPlayId !== playRequestIdRef.current) return;
       }
@@ -494,13 +404,13 @@ function MainApp() {
     } else if (providerName === 'apple') {
       searchResult = { id: track.id, title: track.name, artist: track.artist, providerData: { appleMusicId: track.id } };
     } else {
-      searchResult = { id: track.id, title: track.name, artist: track.artist, providerData: { videoId: track.id } };
+      searchResult = { id: track.id, title: track.name, artist: track.artist, providerData: {} };
     }
 
     try {
       const playbackId = await provider.playTrack(searchResult);
-      if (providerName === 'youtube' && playerRef.current) {
-        playerRef.current.loadVideoById(playbackId);
+      if (playbackId) {
+        // Provider handles playback internally
       }
       setIsPlaying(true);
 
@@ -570,9 +480,6 @@ function MainApp() {
 
     if (playing) {
       provider?.pause().catch(console.error);
-      if (s.currentProvider === 'youtube' && playerRef.current) {
-        playerRef.current.pauseVideo();
-      }
       setIsPlaying(false);
       window.electron?.tray?.updateInfo({ title: ct?.name || 'DJ.ai', artist: ct?.artist || '', isPlaying: false });
     } else {
@@ -580,9 +487,6 @@ function MainApp() {
         handlePlayTrack(pl[0]);
       } else {
         provider?.play().catch(console.error);
-        if (s.currentProvider === 'youtube' && playerRef.current) {
-          playerRef.current.playVideo();
-        }
         setIsPlaying(true);
         window.electron?.tray?.updateInfo({ title: ct?.name || 'DJ.ai', artist: ct?.artist || '', isPlaying: true });
       }
@@ -615,7 +519,7 @@ function MainApp() {
     providers.current.get(settingsRef.current.currentProvider)?.previous().catch(console.error);
   };
 
-  const handleConnectProvider = async (providerName: 'youtube' | 'spotify' | 'apple') => {
+  const handleConnectProvider = async (providerName: 'spotify' | 'apple') => {
     console.log('handleConnectProvider called for:', providerName);
     
     let provider = providers.current.get(providerName);
@@ -623,10 +527,6 @@ function MainApp() {
     // Create provider if it doesn't exist
     if (!provider) {
       console.log('Provider not found, creating new one');
-      if (providerName === 'youtube') {
-        provider = new YouTubeMusicProvider();
-        providers.current.set('youtube', provider);
-      }
       if (providerName === 'spotify') {
         provider = new SpotifyProvider();
         providers.current.set('spotify', provider);
@@ -694,10 +594,10 @@ function MainApp() {
   };
 
   const handleConnectProviderForWizard = async (providerName: string) => {
-    await handleConnectProvider(providerName as 'youtube' | 'spotify' | 'apple');
+    await handleConnectProvider(providerName as 'spotify' | 'apple');
   };
 
-  const handleDisconnectProvider = async (providerName: 'youtube' | 'spotify' | 'apple') => {
+  const handleDisconnectProvider = async (providerName: 'spotify' | 'apple') => {
     const provider = providers.current.get(providerName);
     if (provider) {
       await provider.signOut();
@@ -750,7 +650,7 @@ function MainApp() {
             
             // Fallback to pending provider if state lookup fails
             if (!providerName) {
-              providerName = localStorage.getItem('djai_oauth_pending_provider') || 'youtube';
+              providerName = localStorage.getItem('djai_oauth_pending_provider') || 'apple';
             }
             
             // Handle the success
@@ -800,28 +700,6 @@ function MainApp() {
     // Strip secrets before writing the main settings blob
     const { openaiApiKey: _o, anthropicApiKey: _a, elevenLabsApiKey: _e, geminiApiKey: _g, ...safeSettings } = newSettings;
     localStorage.setItem('djAiSettings', JSON.stringify(safeSettings));
-    
-    // Update current provider if API key changed
-    if (newSettings.providers.youtube.apiKey && newSettings.currentProvider === 'youtube') {
-      const ytProvider = new YouTubeMusicProvider({ apiKey: newSettings.providers.youtube.apiKey });
-      providers.current.set('youtube', ytProvider);
-      currentProvider.current = ytProvider;
-      
-      ytProvider.authenticate().then(result => {
-        if (result.success) {
-          setDjCommentary('✅ YouTube Music connected! You can now search for music.');
-          setSettings(prev => ({
-            ...prev,
-            providers: {
-              ...prev.providers,
-              youtube: { ...prev.providers.youtube, isConnected: true }
-            }
-          }));
-        } else {
-          setDjCommentary('❌ YouTube connection failed. Check your API key.');
-        }
-      });
-    }
   };
 
   if (showOnboarding) {
@@ -847,7 +725,6 @@ function MainApp() {
                 <div className="service-selector">
                   <div className="provider-badge">
                     {isTestMode() && '🧪 Test Mode'}
-                    {!isTestMode() && settings.currentProvider === 'youtube' && '🎥 YouTube Music'}
                     {!isTestMode() && settings.currentProvider === 'spotify' && '🎵 Spotify'}
                     {!isTestMode() && settings.currentProvider === 'apple' && '🍎 Apple Music'}
                     {settings.providers[settings.currentProvider].isConnected ? ' ✅' : ' ❌'}
@@ -933,17 +810,20 @@ function MainApp() {
 
               <div className={`visualizer ${isFullscreen ? 'fullscreen' : ''}`}>
                 {!isFullscreen && <h3>Visualizer</h3>}
-                {settings.currentProvider === 'youtube' ? (
-                  <>
-                    <div ref={playerDivRef} style={{display: 'none'}}/>
-                    <Suspense fallback={<div className="visualizer-placeholder" />}>
-                      <AudioVisualizer 
-                        audioSource={playerRef.current}
-                        isPlaying={isPlaying}
-                      />
-                    </Suspense>
-                  </>
-                ) : <div className="viz-placeholder">GPU Visualizer - Connect a provider to see visuals</div>}
+                <div className="viz-placeholder">
+                  {currentTrack ? (
+                    <div className="now-playing-visual">
+                      {currentTrack.albumArtUrl && <img src={currentTrack.albumArtUrl} alt="Album art" className="album-art-large" />}
+                        <div className="now-playing-text">
+                          <div className="track-name">{currentTrack.name}</div>
+                          <div className="track-artist">{currentTrack.artist}</div>
+                          {currentTrack.album && <div className="track-album">{currentTrack.album}</div>}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="viz-empty">🎵 Search for a track to start playing</div>
+                    )}
+                  </div>
                 
                 {isFullscreen && currentTrack && (
                   <div className="fullscreen-track-info">
@@ -1022,15 +902,12 @@ function MainApp() {
             <div className={`controls ${isFullscreen ? 'fullscreen-controls' : ''}`}>
               <div className="controls-row">
                 <TrackProgressBar 
-                  youtubePlayer={playerRef.current}
                   durationMs={currentTrack?.durationMs}
                   isPlaying={isPlaying}
                 />
                 
                 {!isFullscreen && (
-                  <VolumeControl 
-                    youtubePlayer={playerRef.current}
-                  />
+                  <VolumeControl />
                 )}
               </div>
               
@@ -1051,9 +928,7 @@ function MainApp() {
                   </button>
                 )}
                 {isFullscreen && (
-                  <VolumeControl 
-                    youtubePlayer={playerRef.current}
-                  />
+                  <VolumeControl />
                 )}
               </div>
             </div>

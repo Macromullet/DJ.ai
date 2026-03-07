@@ -37,7 +37,7 @@ export function OAuthCallback({ onSuccess }: OAuthCallbackProps) {
       }
       
       if (!provider) {
-        provider = localStorage.getItem('djai_oauth_pending_provider') || 'youtube';
+        provider = localStorage.getItem('djai_oauth_pending_provider') || 'apple';
       }
       
       // Cleanup happens in the provider handler now

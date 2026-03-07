@@ -3,9 +3,9 @@ import './TrackProgressBar.css';
 
 interface TrackProgressBarProps {
   /**
-   * YouTube player instance (if using YouTube provider)
+   * Current playback position in milliseconds (polled from provider)
    */
-  youtubePlayer?: any;
+  currentTimeMs?: number;
   
   /**
    * Current track duration in milliseconds
@@ -30,8 +30,8 @@ interface TrackProgressBarProps {
  * Updates in real-time while playing.
  * Works with any music provider.
  */
-export function TrackProgressBar({ youtubePlayer, durationMs, isPlaying, onSeek }: TrackProgressBarProps) {
-  const [currentTimeMs, setCurrentTimeMs] = useState(0);
+export function TrackProgressBar({ currentTimeMs: currentTimeMsProp, durationMs, isPlaying, onSeek }: TrackProgressBarProps) {
+  const [currentTimeMs, setCurrentTimeMs] = useState(currentTimeMsProp || 0);
   const [duration, setDuration] = useState(durationMs || 0);
   const [isDragging, setIsDragging] = useState(false);
   const intervalRef = useRef<number | null>(null);
@@ -39,11 +39,9 @@ export function TrackProgressBar({ youtubePlayer, durationMs, isPlaying, onSeek 
 
   // Refs to avoid stale closures in window event handlers
   const durationRef = useRef(duration);
-  const youtubePlayerRef = useRef(youtubePlayer);
   const onSeekRef = useRef(onSeek);
 
   useEffect(() => { durationRef.current = duration; }, [duration]);
-  useEffect(() => { youtubePlayerRef.current = youtubePlayer; }, [youtubePlayer]);
   useEffect(() => { onSeekRef.current = onSeek; }, [onSeek]);
 
   // Update duration when prop changes
@@ -53,12 +51,18 @@ export function TrackProgressBar({ youtubePlayer, durationMs, isPlaying, onSeek 
     }
   }, [durationMs]);
 
-  // Poll playback position while playing
+  // Update currentTimeMs from prop when not dragging
+  useEffect(() => {
+    if (!isDragging && currentTimeMsProp !== undefined) {
+      setCurrentTimeMs(currentTimeMsProp);
+    }
+  }, [currentTimeMsProp, isDragging]);
+
+  // Poll playback position while playing (increment locally for smooth progress)
   useEffect(() => {
     if (isPlaying && !isDragging) {
-      // Update every 100ms for smooth progress
       intervalRef.current = window.setInterval(() => {
-        updatePosition();
+        setCurrentTimeMs(prev => prev + 100);
       }, 100);
     } else {
       if (intervalRef.current) {
@@ -72,24 +76,7 @@ export function TrackProgressBar({ youtubePlayer, durationMs, isPlaying, onSeek 
         clearInterval(intervalRef.current);
       }
     };
-  }, [isPlaying, isDragging, youtubePlayer]);
-
-  const updatePosition = async () => {
-    if (youtubePlayer && typeof youtubePlayer.getCurrentTime === 'function') {
-      try {
-        const currentTimeSec = await youtubePlayer.getCurrentTime();
-        setCurrentTimeMs(currentTimeSec * 1000);
-        
-        // Also update duration if we don't have it yet
-        if (!duration) {
-          const dur = await youtubePlayer.getDuration();
-          setDuration(dur * 1000);
-        }
-      } catch (error) {
-        // Player not ready yet, ignore
-      }
-    }
-  };
+  }, [isPlaying, isDragging]);
 
   const formatTime = (ms: number): string => {
     const totalSeconds = Math.floor(ms / 1000);
@@ -107,12 +94,6 @@ export function TrackProgressBar({ youtubePlayer, durationMs, isPlaying, onSeek 
     const newPositionMs = Math.max(0, Math.min(dur, percent * dur));
     
     setCurrentTimeMs(newPositionMs);
-
-    // Seek in the player
-    const player = youtubePlayerRef.current;
-    if (player && typeof player.seekTo === 'function') {
-      player.seekTo(newPositionMs / 1000, true);
-    }
 
     if (onSeekRef.current) {
       onSeekRef.current(newPositionMs);
@@ -161,17 +142,11 @@ export function TrackProgressBar({ youtubePlayer, durationMs, isPlaying, onSeek 
       e.preventDefault();
       const newPos = Math.min(duration, currentTimeMs + seekStep);
       setCurrentTimeMs(newPos);
-      if (youtubePlayer && typeof youtubePlayer.seekTo === 'function') {
-        youtubePlayer.seekTo(newPos / 1000, true);
-      }
       onSeek?.(newPos);
     } else if (e.key === 'ArrowLeft') {
       e.preventDefault();
       const newPos = Math.max(0, currentTimeMs - seekStep);
       setCurrentTimeMs(newPos);
-      if (youtubePlayer && typeof youtubePlayer.seekTo === 'function') {
-        youtubePlayer.seekTo(newPos / 1000, true);
-      }
       onSeek?.(newPos);
     }
   };

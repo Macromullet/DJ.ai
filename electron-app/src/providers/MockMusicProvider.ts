@@ -35,7 +35,7 @@ const MOCK_TRACKS: SearchResult[] = Array.from({ length: 100 }, (_, i) => ({
 }));
 
 export class MockMusicProvider implements IMusicProvider {
-  providerId: 'youtube' | 'spotify' | 'apple' = 'youtube'; // Mock as YouTube for now
+  providerId: 'youtube' | 'spotify' | 'apple' = 'apple'; // Mock as Apple for tests
   providerName = 'Mock Provider';
   isAuthenticated = true; // Auto-authenticated in test mode
   private currentTrack: SearchResult | null = null;

@@ -3,16 +3,10 @@ import './Settings.css';
 
 export interface SettingsConfig {
   // Current provider
-  currentProvider: 'youtube' | 'spotify' | 'apple';
+  currentProvider: 'spotify' | 'apple';
   
   // Provider credentials
   providers: {
-    youtube: {
-      apiKey?: string;
-      accessToken?: string;
-      refreshToken?: string;
-      isConnected: boolean;
-    };
     spotify: {
       accessToken?: string;
       refreshToken?: string;
@@ -42,8 +36,8 @@ interface SettingsProps {
   config: SettingsConfig;
   onSave: (config: SettingsConfig) => void;
   onClose: () => void;
-  onConnectProvider: (provider: 'youtube' | 'spotify' | 'apple') => void;
-  onDisconnectProvider: (provider: 'youtube' | 'spotify' | 'apple') => void;
+  onConnectProvider: (provider: 'spotify' | 'apple') => void;
+  onDisconnectProvider: (provider: 'spotify' | 'apple') => void;
 }
 
 export function Settings({ config, onSave, onClose, onConnectProvider, onDisconnectProvider }: SettingsProps) {
@@ -86,16 +80,6 @@ export function Settings({ config, onSave, onClose, onConnectProvider, onDisconn
                 <input
                   type="radio"
                   name="currentProvider"
-                  value="youtube"
-                  checked={localConfig.currentProvider === 'youtube'}
-                  onChange={(_e) => setLocalConfig({...localConfig, currentProvider: 'youtube'})}
-                />
-                YouTube Music
-              </label>
-              <label>
-                <input
-                  type="radio"
-                  name="currentProvider"
                   value="spotify"
                   checked={localConfig.currentProvider === 'spotify'}
                   onChange={(_e) => setLocalConfig({...localConfig, currentProvider: 'spotify'})}
@@ -113,29 +97,6 @@ export function Settings({ config, onSave, onClose, onConnectProvider, onDisconn
                 Apple Music
               </label>
             </div>
-
-            {/* YouTube Authentication */}
-            {localConfig.currentProvider === 'youtube' && (
-              <div className="provider-auth">
-                <h4>YouTube Music Authentication</h4>
-                {localConfig.providers.youtube.isConnected ? (
-                  <div className="auth-status connected">
-                    <span>✅ Connected to YouTube Music</span>
-                    <button onClick={() => onDisconnectProvider('youtube')} className="btn-disconnect">Disconnect</button>
-                  </div>
-                ) : (
-                  <>
-                    <p className="help-text">Connect with your Google account to access YouTube Music</p>
-                    <button onClick={() => onConnectProvider('youtube')} className="btn-connect">
-                      🔗 Connect with Google
-                    </button>
-                    <p className="help-text small-text">
-                      Securely login through Google OAuth. Your credentials are never stored by DJ.ai.
-                    </p>
-                  </>
-                )}
-              </div>
-            )}
 
             {/* Spotify Authentication */}
             {localConfig.currentProvider === 'spotify' && (
@@ -172,11 +133,11 @@ export function Settings({ config, onSave, onClose, onConnectProvider, onDisconn
                 ) : (
                   <>
                     <p className="help-text">Connect with your Apple ID to access Apple Music</p>
-                    <button onClick={() => onConnectProvider('apple')} className="btn-connect" disabled>
-                      🍎 Connect with Apple (Coming Soon)
+                    <button onClick={() => onConnectProvider('apple')} className="btn-connect">
+                      🍎 Connect with Apple Music
                     </button>
                     <p className="help-text small-text">
-                      Apple Music API access coming soon
+                      Requires an Apple Music subscription and Apple Developer key
                     </p>
                   </>
                 )}

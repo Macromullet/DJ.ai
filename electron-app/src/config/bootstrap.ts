@@ -38,7 +38,7 @@ export async function bootstrapApp() {
         || (keys.anthropicApiKey ? 'anthropic' : keys.openaiApiKey ? 'openai' : 'anthropic');
 
       initializeProductionMode({
-        provider: settings.currentProvider || 'youtube',
+        provider: settings.currentProvider || 'apple',
         ttsProvider: settings.ttsProvider || 'web-speech',
         aiProvider,
         openaiApiKey: keys.openaiApiKey,

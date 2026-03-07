@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import { bootstrapApp } from './config/bootstrap';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { ToastProvider } from './components/Toast';
 import MainApp from './App';
 
 // Design system (order matters: tokens → base → utilities → component styles)
@@ -18,7 +19,9 @@ bootstrapApp()
       <React.StrictMode>
         <ErrorBoundary>
           <BrowserRouter>
-            <MainApp />
+            <ToastProvider>
+              <MainApp />
+            </ToastProvider>
           </BrowserRouter>
         </ErrorBoundary>
       </React.StrictMode>

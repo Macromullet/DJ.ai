@@ -12,6 +12,7 @@ import TestModeIndicator from './components/TestModeIndicator';
 import { TrackProgressBar } from './components/TrackProgressBar';
 import { VolumeControl } from './components/VolumeControl';
 import { OnboardingWizard } from './components/OnboardingWizard';
+import { useToast } from './components/Toast';
 const AudioVisualizer = lazy(() => import('./components/AudioVisualizer').then(m => ({ default: m.AudioVisualizer })));
 import { getMusicProvider, getTTSService, getAICommentaryService, container } from './config/container';
 import { isTestMode } from './config/testMode';
@@ -70,6 +71,8 @@ function MainApp() {
     localStorage.setItem('djai_onboarding_complete', 'true');
     setShowOnboarding(false);
   }, []);
+
+  const { showToast } = useToast();
 
   // Load API keys asynchronously (safeStorage is async in Electron)
   useEffect(() => {
@@ -217,6 +220,7 @@ function MainApp() {
           }
         } catch (e) {
           console.warn('Failed to rehydrate YouTube provider:', e);
+          showToast('Could not restore YouTube session', 'warning');
         }
       }
 
@@ -233,6 +237,7 @@ function MainApp() {
           }
         } catch (e) {
           console.warn('Failed to rehydrate Spotify provider:', e);
+          showToast('Could not restore Spotify session', 'warning');
         }
       }
 
@@ -248,6 +253,7 @@ function MainApp() {
           }
         } catch (e) {
           console.warn('Failed to rehydrate Apple Music provider:', e);
+          showToast('Could not restore Apple Music session', 'warning');
         }
       }
     };
@@ -434,6 +440,7 @@ function MainApp() {
           announcement = commentary.text;
         } catch (error) {
           console.warn('AI commentary generation failed:', error);
+          showToast('AI commentary unavailable', 'warning');
         }
       }
     }
@@ -457,6 +464,7 @@ function MainApp() {
         if (player?.setVolume) player.setVolume(savedVolume);
       } catch (error) {
         console.warn('TTS failed:', error);
+        showToast('Text-to-speech failed', 'warning');
         const player = playerRef.current;
         const saved = localStorage.getItem('djai_volume');
         if (player?.setVolume) player.setVolume(saved ? parseInt(saved, 10) : 80);
@@ -480,10 +488,23 @@ function MainApp() {
       }
       setIsPlaying(true);
 
+      // Desktop notification (when minimized) and system tray update
+      window.electron?.notifications?.show({
+        title: track.name,
+        body: `${track.artist}${track.album ? ' — ' + track.album : ''}`,
+        icon: track.albumArtUrl || undefined,
+      });
+      window.electron?.tray?.updateInfo({
+        title: track.name,
+        artist: track.artist,
+        isPlaying: true,
+      });
+
       // Kick off look-ahead pre-generation for the next track
       preGenerateNextTrack(track);
     } catch {
       setDjCommentary(`Could not play`);
+      showToast('Playback failed', 'error');
     }
   };
 
@@ -534,6 +555,7 @@ function MainApp() {
         playerRef.current.pauseVideo();
       }
       setIsPlaying(false);
+      window.electron?.tray?.updateInfo({ title: currentTrack?.name || 'DJ.ai', artist: currentTrack?.artist || '', isPlaying: false });
     } else {
       if (!currentTrack && playlist.length > 0) {
         handlePlayTrack(playlist[0]);
@@ -544,6 +566,7 @@ function MainApp() {
           playerRef.current.playVideo();
         }
         setIsPlaying(true);
+        window.electron?.tray?.updateInfo({ title: currentTrack?.name || 'DJ.ai', artist: currentTrack?.artist || '', isPlaying: true });
       }
     }
   };
@@ -599,6 +622,7 @@ function MainApp() {
     if (!provider) {
       console.error('Failed to create provider');
       setDjCommentary('❌ Failed to initialize provider');
+      showToast('Failed to initialize music provider', 'error');
       return;
     }
 
@@ -724,6 +748,14 @@ function MainApp() {
       };
     }
   }, []); // Empty dependency array - run once on mount
+
+  // System tray playback controls (from tray context menu and media keys)
+  useEffect(() => {
+    if (!window.electron?.tray) return;
+    window.electron.tray.onPlaybackToggle(() => handlePlayPause());
+    window.electron.tray.onNextTrack(() => handleNext());
+    window.electron.tray.onPreviousTrack(() => handlePrevious());
+  }, []);
 
   const handleSettingsSave = (newSettings: SettingsConfig) => {
     setSettings(newSettings);

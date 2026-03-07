@@ -34,6 +34,19 @@ contextBridge.exposeInMainWorld('electron', {
     decrypt: (encrypted) => ipcRenderer.invoke('safe-storage-decrypt', encrypted),
   },
   
+  // Desktop notifications
+  notifications: {
+    show: (options) => ipcRenderer.invoke('show-notification', options)
+  },
+
+  // System tray controls
+  tray: {
+    updateInfo: (info) => ipcRenderer.invoke('update-tray-info', info),
+    onPlaybackToggle: (callback) => ipcRenderer.on('tray-playback-toggle', () => callback()),
+    onNextTrack: (callback) => ipcRenderer.on('tray-next-track', () => callback()),
+    onPreviousTrack: (callback) => ipcRenderer.on('tray-previous-track', () => callback())
+  },
+
   // Check if running in Electron
   isElectron: true
 });

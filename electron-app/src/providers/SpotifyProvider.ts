@@ -117,6 +117,10 @@ export class SpotifyProvider implements IMusicProvider {
     if (this.auth?.refreshToken) {
       await this.refreshTokenIfNeeded();
     }
+    // Retry player initialization if auth succeeded but player was skipped
+    if (this.isAuthenticated && !this.player) {
+      await this.initializePlayer();
+    }
     return this.isAuthenticated;
   }
 

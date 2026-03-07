@@ -68,9 +68,10 @@ public class ValidationService : IValidationService
         }
 
         // Allow custom URI schemes for Electron deep linking (e.g., djai://oauth/callback)
+        // Validate host and path even for custom schemes to prevent open redirect
         if (_allowedCustomSchemes.Contains(uri.Scheme))
         {
-            return true;
+            return uri.Host == "oauth" && uri.AbsolutePath == "/callback";
         }
 
         // Must be HTTP or HTTPS

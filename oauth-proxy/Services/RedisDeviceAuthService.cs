@@ -157,7 +157,12 @@ public class RedisDeviceAuthService : IDeviceAuthService
 
         var activeDeviceCount = _db.SortedSetLength(DeviceSetKey);
         if (activeDeviceCount >= _maxDeviceCount)
-            return false;
+        {
+            // LRU eviction: remove oldest 10% of devices to make room
+            var evictCount = Math.Max(1, _maxDeviceCount / 10);
+            _db.SortedSetRemoveRangeByRank(DeviceSetKey, 0, evictCount - 1);
+            _logger.LogWarning("Device pool full — evicted {Count} least-recently-seen devices", evictCount);
+        }
 
         var registerBatch = _db.CreateBatch();
         registerBatch.StringSetAsync(deviceKey, "1", DeviceExpiry);
@@ -292,7 +297,20 @@ public class RedisDeviceAuthService : IDeviceAuthService
         }
 
         if (_fallbackDevices.Count >= _maxDeviceCount)
-            return false;
+        {
+            // LRU eviction: remove oldest 10% of devices to make room
+            var evictCount = Math.Max(1, _maxDeviceCount / 10);
+            var oldest = _fallbackDevices
+                .OrderBy(kv => kv.Value)
+                .Take(evictCount)
+                .Select(kv => kv.Key)
+                .ToList();
+            foreach (var key in oldest)
+            {
+                _fallbackDevices.TryRemove(key, out _);
+                _fallbackRequestHistory.TryRemove(key, out _);
+            }
+        }
 
         _fallbackDevices.TryAdd(deviceToken, DateTime.UtcNow);
         return true;

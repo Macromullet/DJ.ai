@@ -217,8 +217,8 @@ public class AppleMusicOAuthFunctions
                 return errorResp;
             }
 
-            var body = await req.ReadFromJsonAsync<Dictionary<string, string>>();
-            if (body == null || !body.ContainsKey("musicUserToken"))
+            var body = await req.ReadFromJsonAsync<AppleMusicValidateRequest>();
+            if (body == null || string.IsNullOrEmpty(body.MusicUserToken))
             {
                 var errorResp = req.CreateResponse(System.Net.HttpStatusCode.BadRequest);
                 await errorResp.WriteAsJsonAsync(new ErrorResponse 
@@ -240,7 +240,7 @@ public class AppleMusicOAuthFunctions
                 return errorResp;
             }
 
-            var musicUserToken = body["musicUserToken"];
+            var musicUserToken = body.MusicUserToken;
 
             // Validate the Music User Token by making a test API call
             using var httpClient = _httpClientFactory.CreateClient();

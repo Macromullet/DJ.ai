@@ -22,6 +22,7 @@ public class HealthCheckFunction
     {
         var timestamp = DateTime.UtcNow.ToString("o");
         string keyVaultStatus;
+        string? pemKeyStatus = null;
 
         try
         {
@@ -35,7 +36,35 @@ public class HealthCheckFunction
             keyVaultStatus = "unavailable";
         }
 
-        var isHealthy = keyVaultStatus == "connected";
+        // Validate Apple Music PEM key format if Key Vault is available
+        if (keyVaultStatus == "connected")
+        {
+            try
+            {
+                var privateKey = await _secretService.GetSecretAsync("AppleMusicPrivateKey");
+                using var ecdsa = System.Security.Cryptography.ECDsa.Create();
+                ecdsa.ImportFromPem(privateKey);
+                pemKeyStatus = "valid";
+            }
+            catch (InvalidOperationException ex)
+            {
+                // PEM key exists but is not valid P-256 format
+                _logger.LogWarning(ex, "Health check: Apple Music PEM key is invalid");
+                pemKeyStatus = "invalid";
+            }
+            catch (System.Security.Cryptography.CryptographicException ex)
+            {
+                _logger.LogWarning(ex, "Health check: Apple Music PEM key is malformed");
+                pemKeyStatus = "invalid";
+            }
+            catch (Exception)
+            {
+                // Secret not found — Apple Music not configured (not a health issue)
+                pemKeyStatus = "not_configured";
+            }
+        }
+
+        var isHealthy = keyVaultStatus == "connected" && pemKeyStatus != "invalid";
         var statusCode = isHealthy
             ? System.Net.HttpStatusCode.OK
             : System.Net.HttpStatusCode.ServiceUnavailable;
@@ -45,6 +74,7 @@ public class HealthCheckFunction
         {
             status = isHealthy ? "healthy" : "degraded",
             keyVault = keyVaultStatus,
+            appleMusicKey = pemKeyStatus ?? "not_checked",
             timestamp
         });
 

@@ -8,7 +8,6 @@ const AI_API_ALLOWLIST = new Set([
 ]);
 
 const ALLOWED_OAUTH_HOSTS = new Set([
-  'accounts.google.com',
   'accounts.spotify.com',
   'appleid.apple.com',
   'authorize.music.apple.com',
@@ -106,7 +105,7 @@ function buildCSP() {
     "style-src 'self' 'unsafe-inline'; " +
     "img-src 'self' data: https: http:; " +
     "media-src 'self' https:; " +
-    "connect-src 'self' http://localhost:* https://*.azurewebsites.net https://*.azurestaticapps.net https://api.openai.com https://api.anthropic.com https://www.googleapis.com https://generativelanguage.googleapis.com https://accounts.google.com https://api.spotify.com https://accounts.spotify.com https://apisdk.scdn.co https://api.music.apple.com https://authorize.music.apple.com https://api.elevenlabs.io;"
+    "connect-src 'self' http://localhost:* https://*.azurewebsites.net https://*.azurestaticapps.net https://api.openai.com https://api.anthropic.com https://generativelanguage.googleapis.com https://api.spotify.com https://accounts.spotify.com https://apisdk.scdn.co https://api.music.apple.com https://authorize.music.apple.com https://api.elevenlabs.io;"
   );
 }
 

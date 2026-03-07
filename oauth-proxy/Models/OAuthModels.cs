@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace DJai.OAuthProxy.Models;
 
 public class OAuthInitiateRequest
@@ -32,6 +34,12 @@ public class OAuthRefreshRequest
 {
     public string DeviceToken { get; set; } = string.Empty;
     public string RefreshToken { get; set; } = string.Empty;
+}
+
+public class AppleMusicValidateRequest
+{
+    [JsonPropertyName("musicUserToken")]
+    public string MusicUserToken { get; set; } = string.Empty;
 }
 
 public class ErrorResponse

@@ -317,10 +317,10 @@ ipcMain.handle('safe-storage-encrypt', (event, plaintext) => {
 // SECURITY NOTE: Exposing a general-purpose decrypt IPC means that any XSS in
 // the renderer can exfiltrate all stored API keys. The ideal fix is to remove
 // this endpoint entirely and have the main process attach keys internally (see
-// ai-api-request handler). Until that refactor, rate-limit calls to mitigate
-// automated exfiltration.
+// ai-api-request handler). Until that refactor, rate-limit calls and log
+// attempts to mitigate automated exfiltration.
 const decryptCallTimestamps = [];
-const DECRYPT_MAX_CALLS = 10;
+const DECRYPT_MAX_CALLS = 5;
 const DECRYPT_WINDOW_MS = 60_000; // 1 minute
 
 // Desktop notifications
@@ -349,10 +349,11 @@ ipcMain.handle('safe-storage-decrypt', (event, encrypted) => {
     decryptCallTimestamps.shift();
   }
   if (decryptCallTimestamps.length >= DECRYPT_MAX_CALLS) {
-    console.error('safe-storage-decrypt rate limit exceeded');
-    throw new Error('Rate limit exceeded for decryption — max 10 calls per minute');
+    console.error('safe-storage-decrypt rate limit exceeded — possible exfiltration attempt');
+    throw new Error('Rate limit exceeded for decryption — max 5 calls per minute');
   }
   decryptCallTimestamps.push(now);
+  console.warn(`safe-storage-decrypt called (${decryptCallTimestamps.length}/${DECRYPT_MAX_CALLS} in window)`);
 
   const buffer = Buffer.from(encrypted, 'base64');
   return safeStorage.decryptString(buffer);

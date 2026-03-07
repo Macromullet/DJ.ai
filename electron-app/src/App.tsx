@@ -94,6 +94,13 @@ function MainApp() {
   const playlistRef = useRef(playlist);
   const currentTrackRef = useRef(currentTrack);
 
+  // Look-ahead pre-generation cache for seamless DJ transitions
+  const preGenCacheRef = useRef<{
+    trackId: string;
+    commentary: string;
+    audioBlob: Blob | null;
+  } | null>(null);
+
   useEffect(() => { autoDJModeRef.current = settings.autoDJMode; }, [settings.autoDJMode]);
   useEffect(() => { ttsEnabledRef.current = settings.ttsEnabled; }, [settings.ttsEnabled]);
   useEffect(() => { playlistRef.current = playlist; }, [playlist]);
@@ -242,42 +249,61 @@ function MainApp() {
     else if (event.data === 2) setIsPlaying(false);
   };
 
-  /** Auto-DJ: generate commentary for upcoming track, speak it, then play */
+  /** Auto-DJ: use pre-generated cache for seamless transitions, fallback to live generation */
   const handleAutoDJTransition = async () => {
     if (isTransitioningRef.current) return;
     isTransitioningRef.current = true;
     try {
-    const pl = playlistRef.current;
-    const ct = currentTrackRef.current;
-    if (!pl.length || !ct) { handleNext(); return; }
+      const pl = playlistRef.current;
+      const ct = currentTrackRef.current;
+      if (!pl.length || !ct) { handleNext(); return; }
 
-    const currentIndex = pl.findIndex(t => t.id === ct.id);
-    const nextTrack = currentIndex >= 0 && currentIndex < pl.length - 1
-      ? pl[currentIndex + 1] : null;
-    if (!nextTrack) { handleNext(); return; }
+      const currentIndex = pl.findIndex(t => t.id === ct.id);
+      const nextTrack = currentIndex >= 0 && currentIndex < pl.length - 1
+        ? pl[currentIndex + 1] : null;
+      if (!nextTrack) { handleNext(); return; }
 
-    // Generate commentary with 3s timeout
-    let announcement = `Coming up next: ${nextTrack.name} by ${nextTrack.artist}`;
-    if (container.has('aiCommentaryService')) {
-      const aiService = getAICommentaryService();
-      if (aiService) {
-        try {
-          const result = await Promise.race([
-            aiService.generateCommentary(nextTrack.name, nextTrack.artist, nextTrack.album),
-            new Promise<null>(r => setTimeout(() => r(null), 3000)),
-          ]);
-          if (result) announcement = result.text;
-        } catch { /* use fallback */ }
+      // Check if pre-generation completed for this track
+      const cached = preGenCacheRef.current;
+      if (cached && cached.trackId === nextTrack.id) {
+        // Cache hit — near-instant transition
+        setDjCommentary(cached.commentary);
+        if (ttsEnabledRef.current && container.has('ttsService')) {
+          const ttsService = getTTSService();
+          try {
+            if (cached.audioBlob && ttsService.speakFromBlob) {
+              await ttsService.speakFromBlob(cached.audioBlob);
+            } else {
+              await ttsService.speak(cached.commentary);
+            }
+          } catch { /* continue */ }
+        }
+        preGenCacheRef.current = null;
+        handlePlayTrack(nextTrack);
+        return;
       }
-    }
-    setDjCommentary(announcement);
 
-    // Speak before starting the next track (use ref to avoid stale closure)
-    if (ttsEnabledRef.current && container.has('ttsService')) {
-      try { await getTTSService().speak(announcement); } catch { /* continue */ }
-    }
+      // Cache miss — generate live with 3s timeout
+      let announcement = `Coming up next: ${nextTrack.name} by ${nextTrack.artist}`;
+      if (container.has('aiCommentaryService')) {
+        const aiService = getAICommentaryService();
+        if (aiService) {
+          try {
+            const result = await Promise.race([
+              aiService.generateCommentary(nextTrack.name, nextTrack.artist, nextTrack.album),
+              new Promise<null>(r => setTimeout(() => r(null), 3000)),
+            ]);
+            if (result) announcement = result.text;
+          } catch { /* use fallback */ }
+        }
+      }
+      setDjCommentary(announcement);
 
-    handlePlayTrack(nextTrack);
+      if (ttsEnabledRef.current && container.has('ttsService')) {
+        try { await getTTSService().speak(announcement); } catch { /* continue */ }
+      }
+
+      handlePlayTrack(nextTrack);
     } finally {
       isTransitioningRef.current = false;
     }
@@ -327,77 +353,113 @@ function MainApp() {
     const provider = currentProvider.current;
     if (!provider) return;
 
-    // Generate AI commentary if available
+    // Check pre-generation cache for this track
+    const cached = preGenCacheRef.current;
     let announcement = `Now playing: ${track.name} by ${track.artist}`;
-    
-    if (container.has('aiCommentaryService')) {
+    let cachedAudioBlob: Blob | null = null;
+
+    if (cached && cached.trackId === track.id) {
+      announcement = cached.commentary;
+      cachedAudioBlob = cached.audioBlob;
+      preGenCacheRef.current = null;
+    } else if (container.has('aiCommentaryService')) {
       const aiService = getAICommentaryService();
       if (aiService) {
         try {
           const commentary = await aiService.generateCommentary(
-            track.name,
-            track.artist,
-            track.album
+            track.name, track.artist, track.album
           );
           announcement = commentary.text;
         } catch (error) {
           console.warn('AI commentary generation failed:', error);
-          // Stick with simple announcement
         }
       }
     }
 
-    // Display the commentary
     setDjCommentary(announcement);
 
-    // Speak it if TTS is enabled
+    // Speak with volume ducking
     if (settings.ttsEnabled && container.has('ttsService')) {
       const ttsService = getTTSService();
       try {
-        await ttsService.speak(announcement);
+        const player = playerRef.current;
+        const savedVolume = player?.getVolume?.() ?? 80;
+        if (player?.setVolume) player.setVolume(Math.round(savedVolume * 0.2));
+
+        if (cachedAudioBlob && ttsService.speakFromBlob) {
+          await ttsService.speakFromBlob(cachedAudioBlob);
+        } else {
+          await ttsService.speak(announcement);
+        }
+
+        if (player?.setVolume) player.setVolume(savedVolume);
       } catch (error) {
         console.warn('TTS failed:', error);
+        const player = playerRef.current;
+        const saved = localStorage.getItem('djai_volume');
+        if (player?.setVolume) player.setVolume(saved ? parseInt(saved, 10) : 80);
       }
     }
 
     // Build a SearchResult from the Track to call the provider interface.
-    // Track.id maps to the provider-specific track identifier.
     let searchResult: SearchResult;
     if (settings.currentProvider === 'spotify') {
-      searchResult = {
-        id: track.id,
-        title: track.name,
-        artist: track.artist,
-        providerData: { uri: `spotify:track:${track.id}` }
-      };
+      searchResult = { id: track.id, title: track.name, artist: track.artist, providerData: { uri: `spotify:track:${track.id}` } };
     } else if (settings.currentProvider === 'apple') {
-      searchResult = {
-        id: track.id,
-        title: track.name,
-        artist: track.artist,
-        providerData: { appleMusicId: track.id }
-      };
+      searchResult = { id: track.id, title: track.name, artist: track.artist, providerData: { appleMusicId: track.id } };
     } else {
-      searchResult = {
-        id: track.id,
-        title: track.name,
-        artist: track.artist,
-        providerData: { videoId: track.id }
-      };
+      searchResult = { id: track.id, title: track.name, artist: track.artist, providerData: { videoId: track.id } };
     }
 
     try {
       const playbackId = await provider.playTrack(searchResult);
-
-      // YouTube-specific: drive the iframe player with the returned video ID
       if (settings.currentProvider === 'youtube' && playerRef.current) {
         playerRef.current.loadVideoById(playbackId);
       }
-
       setIsPlaying(true);
+
+      // Kick off look-ahead pre-generation for the next track
+      preGenerateNextTrack(track);
     } catch {
       setDjCommentary(`Could not play`);
     }
+  };
+
+  /** Pre-generate commentary + TTS audio for the next track in background */
+  const preGenerateNextTrack = (nowPlaying: Track) => {
+    const pl = playlistRef.current;
+    const idx = pl.findIndex(t => t.id === nowPlaying.id);
+    const nextTrack = idx >= 0 && idx < pl.length - 1 ? pl[idx + 1] : null;
+    if (!nextTrack) return;
+
+    (async () => {
+      try {
+        let commentary = `Coming up next: ${nextTrack.name} by ${nextTrack.artist}`;
+        if (container.has('aiCommentaryService')) {
+          const aiService = getAICommentaryService();
+          if (aiService) {
+            const result = await aiService.generateCommentary(nextTrack.name, nextTrack.artist, nextTrack.album);
+            commentary = result.text;
+          }
+        }
+
+        let audioBlob: Blob | null = null;
+        if (container.has('ttsService')) {
+          const ttsService = getTTSService();
+          if (ttsService.renderToBlob) {
+            audioBlob = await ttsService.renderToBlob(commentary);
+          }
+        }
+
+        // Only cache if playlist hasn't shifted
+        if (playlistRef.current.findIndex(t => t.id === nowPlaying.id) >= 0) {
+          preGenCacheRef.current = { trackId: nextTrack.id, commentary, audioBlob };
+          console.log(`[DJ] Pre-generated commentary for: ${nextTrack.name}`);
+        }
+      } catch (error) {
+        console.warn('[DJ] Pre-generation failed (non-fatal):', error);
+      }
+    })();
   };
 
   const handlePlayPause = () => {

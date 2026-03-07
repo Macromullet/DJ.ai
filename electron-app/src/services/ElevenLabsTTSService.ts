@@ -50,6 +50,23 @@ export class ElevenLabsTTSService implements ITTSService {
     }
   }
 
+  async renderToBlob(text: string): Promise<Blob> {
+    const base64Audio = await this.fetchAudio(text);
+    const audioData = this.base64ToArrayBuffer(base64Audio);
+    return new Blob([audioData], { type: 'audio/mpeg' });
+  }
+
+  async speakFromBlob(blob: Blob): Promise<void> {
+    this.stop();
+    const audioData = await blob.arrayBuffer();
+    try {
+      await this.playWithAudioElement(audioData);
+    } catch (error) {
+      console.warn('[ElevenLabs TTS] Audio element failed, trying AudioContext:', error);
+      await this.playWithAudioContext(audioData);
+    }
+  }
+
   stop(): void {
     if (this.currentAudio) {
       this.currentAudio.pause();

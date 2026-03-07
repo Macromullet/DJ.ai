@@ -75,6 +75,24 @@ export class GeminiTTSService implements ITTSService {
     }
   }
 
+  async renderToBlob(text: string): Promise<Blob> {
+    const pcmBase64 = await this.fetchAudio(text);
+    const pcmData = this.base64ToArrayBuffer(pcmBase64);
+    const wavData = this.pcmToWav(pcmData);
+    return new Blob([wavData], { type: 'audio/wav' });
+  }
+
+  async speakFromBlob(blob: Blob): Promise<void> {
+    this.stop();
+    const audioData = await blob.arrayBuffer();
+    try {
+      await this.playWithAudioElement(audioData);
+    } catch (error) {
+      console.warn('[Gemini TTS] Audio element failed, trying AudioContext:', error);
+      await this.playWithAudioContext(audioData);
+    }
+  }
+
   stop(): void {
     if (this.currentAudio) {
       this.currentAudio.pause();
@@ -151,10 +169,11 @@ export class GeminiTTSService implements ITTSService {
 
     if (electronProxy?.request) {
       const result = await electronProxy.request({
-        url: `${GEMINI_TTS_ENDPOINT}?key=${this.apiKey}`,
+        url: GEMINI_TTS_ENDPOINT,
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'x-goog-api-key': this.apiKey,
         },
         body: this.buildRequestBody(text),
       });
@@ -172,10 +191,11 @@ export class GeminiTTSService implements ITTSService {
     }
 
     // Fallback: direct fetch (works in Node/test contexts, will fail in browser due to CORS)
-    const response = await fetch(`${GEMINI_TTS_ENDPOINT}?key=${this.apiKey}`, {
+    const response = await fetch(GEMINI_TTS_ENDPOINT, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'x-goog-api-key': this.apiKey,
       },
       body: JSON.stringify(this.buildRequestBody(text)),
     });

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import './Settings.css';
 
 export interface SettingsConfig {
@@ -48,6 +48,10 @@ interface SettingsProps {
 
 export function Settings({ config, onSave, onClose, onConnectProvider, onDisconnectProvider }: SettingsProps) {
   const [localConfig, setLocalConfig] = useState<SettingsConfig>(config);
+
+  useEffect(() => {
+    setLocalConfig(config);
+  }, [config]);
 
   const handleSave = () => {
     // Persistence is handled by the parent via onSave — do not duplicate here.

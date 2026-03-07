@@ -14,7 +14,11 @@ contextBridge.exposeInMainWorld('electron', {
 
   // OAuth deep link handler (for packaged app custom protocol)
   oauthDeepLink: {
-    onCallback: (callback) => ipcRenderer.on('oauth-deep-link', (event, url) => callback(url)),
+    onCallback: (callback) => {
+      const handler = (_event, url) => callback(url);
+      ipcRenderer.on('oauth-deep-link', handler);
+      return () => ipcRenderer.removeListener('oauth-deep-link', handler);
+    },
     removeCallback: () => ipcRenderer.removeAllListeners('oauth-deep-link')
   },
 
@@ -42,9 +46,21 @@ contextBridge.exposeInMainWorld('electron', {
   // System tray controls
   tray: {
     updateInfo: (info) => ipcRenderer.invoke('update-tray-info', info),
-    onPlaybackToggle: (callback) => ipcRenderer.on('tray-playback-toggle', () => callback()),
-    onNextTrack: (callback) => ipcRenderer.on('tray-next-track', () => callback()),
-    onPreviousTrack: (callback) => ipcRenderer.on('tray-previous-track', () => callback())
+    onPlaybackToggle: (callback) => {
+      const handler = () => callback();
+      ipcRenderer.on('tray-playback-toggle', handler);
+      return () => ipcRenderer.removeListener('tray-playback-toggle', handler);
+    },
+    onNextTrack: (callback) => {
+      const handler = () => callback();
+      ipcRenderer.on('tray-next-track', handler);
+      return () => ipcRenderer.removeListener('tray-next-track', handler);
+    },
+    onPreviousTrack: (callback) => {
+      const handler = () => callback();
+      ipcRenderer.on('tray-previous-track', handler);
+      return () => ipcRenderer.removeListener('tray-previous-track', handler);
+    }
   },
 
   // Check if running in Electron

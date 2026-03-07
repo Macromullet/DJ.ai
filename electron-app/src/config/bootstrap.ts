@@ -29,8 +29,9 @@ export async function bootstrapApp() {
       const keys = await getApiKeys();
 
       // Load saved settings from localStorage
-      const savedSettings = localStorage.getItem('djai-settings');
-      const settings = savedSettings ? JSON.parse(savedSettings) : {};
+      const savedSettings = localStorage.getItem('djAiSettings');
+      let settings: Record<string, any> = {};
+      try { settings = savedSettings ? JSON.parse(savedSettings) : {}; } catch { /* use defaults */ }
 
       // Smart AI provider default: use whichever key the user has
       const aiProvider = settings.aiProvider

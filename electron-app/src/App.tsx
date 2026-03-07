@@ -30,8 +30,12 @@ function MainApp() {
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [currentTrack, setCurrentTrack] = useState<Track | null>(null);
   const [playlist, setPlaylist] = useState<Track[]>(() => {
-    const saved = localStorage.getItem('djai_playlist');
-    return saved ? JSON.parse(saved) : [];
+    try {
+      const saved = localStorage.getItem('djai_playlist');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
   });
   const [djCommentary, setDjCommentary] = useState(
     'Welcome to DJ.ai! Connect a music provider to get started. 🎵'
@@ -41,8 +45,7 @@ function MainApp() {
   const [isFullscreen, setIsFullscreen] = useState(false);
   
   const [settings, setSettings] = useState<SettingsConfig>(() => {
-    const saved = localStorage.getItem('djAiSettings');
-    const base: SettingsConfig = saved ? JSON.parse(saved) : {
+    const defaults: SettingsConfig = {
       currentProvider: isTestMode() ? 'youtube' : 'youtube',
       providers: {
         youtube: { isConnected: isTestMode() },
@@ -59,7 +62,12 @@ function MainApp() {
       ttsVoice: 'onyx',
       autoDJMode: false
     };
-    return base;
+    try {
+      const saved = localStorage.getItem('djAiSettings');
+      return saved ? { ...defaults, ...JSON.parse(saved) } : defaults;
+    } catch {
+      return defaults;
+    }
   });
 
   // Onboarding wizard state
@@ -97,8 +105,11 @@ function MainApp() {
   const autoDJModeRef = useRef(settings.autoDJMode);
   const ttsEnabledRef = useRef(settings.ttsEnabled);
   const isTransitioningRef = useRef(false);
+  const isPlayingRef = useRef(isPlaying);
   const playlistRef = useRef(playlist);
   const currentTrackRef = useRef(currentTrack);
+  const settingsRef = useRef(settings);
+  const playRequestIdRef = useRef(0);
 
   // Look-ahead pre-generation cache for seamless DJ transitions
   const preGenCacheRef = useRef<{
@@ -109,8 +120,10 @@ function MainApp() {
 
   useEffect(() => { autoDJModeRef.current = settings.autoDJMode; }, [settings.autoDJMode]);
   useEffect(() => { ttsEnabledRef.current = settings.ttsEnabled; }, [settings.ttsEnabled]);
+  useEffect(() => { isPlayingRef.current = isPlaying; }, [isPlaying]);
   useEffect(() => { playlistRef.current = playlist; }, [playlist]);
   useEffect(() => { currentTrackRef.current = currentTrack; }, [currentTrack]);
+  useEffect(() => { settingsRef.current = settings; }, [settings]);
 
   // Persist playlist to localStorage
   useEffect(() => {
@@ -347,7 +360,7 @@ function MainApp() {
           } catch { /* continue */ }
         }
         preGenCacheRef.current = null;
-        handlePlayTrack(nextTrack);
+        handlePlayTrack(nextTrack, { skipCommentary: true });
         return;
       }
 
@@ -371,8 +384,7 @@ function MainApp() {
         try { await getTTSService().speak(announcement); } catch { /* continue */ }
       }
 
-      handlePlayTrack(nextTrack);
-    } finally {
+      handlePlayTrack(nextTrack, { skipCommentary: true });    } finally {
       isTransitioningRef.current = false;
     }
   };
@@ -416,66 +428,70 @@ function MainApp() {
     setDjCommentary(`Added: ${track.name}`);
   };
 
-  const handlePlayTrack = async (track: Track) => {
+  const handlePlayTrack = async (track: Track, options?: { skipCommentary?: boolean }) => {
+    const myPlayId = ++playRequestIdRef.current;
     setCurrentTrack(track);
     const provider = currentProvider.current;
+    const providerName = settingsRef.current.currentProvider;
     if (!provider) return;
 
-    // Check pre-generation cache for this track
-    const cached = preGenCacheRef.current;
-    let announcement = `Now playing: ${track.name} by ${track.artist}`;
-    let cachedAudioBlob: Blob | null = null;
+    if (!options?.skipCommentary) {
+      // Check pre-generation cache for this track
+      const cached = preGenCacheRef.current;
+      let announcement = `Now playing: ${track.name} by ${track.artist}`;
+      let cachedAudioBlob: Blob | null = null;
 
-    if (cached && cached.trackId === track.id) {
-      announcement = cached.commentary;
-      cachedAudioBlob = cached.audioBlob;
-      preGenCacheRef.current = null;
-    } else if (container.has('aiCommentaryService')) {
-      const aiService = getAICommentaryService();
-      if (aiService) {
-        try {
-          const commentary = await aiService.generateCommentary(
-            track.name, track.artist, track.album
-          );
-          announcement = commentary.text;
-        } catch (error) {
-          console.warn('AI commentary generation failed:', error);
-          showToast('AI commentary unavailable', 'warning');
+      if (cached && cached.trackId === track.id) {
+        announcement = cached.commentary;
+        cachedAudioBlob = cached.audioBlob;
+        preGenCacheRef.current = null;
+      } else if (container.has('aiCommentaryService')) {
+        const aiService = getAICommentaryService();
+        if (aiService) {
+          try {
+            const commentary = await aiService.generateCommentary(
+              track.name, track.artist, track.album
+            );
+            if (myPlayId !== playRequestIdRef.current) return;
+            announcement = commentary.text;
+          } catch (error) {
+            if (myPlayId !== playRequestIdRef.current) return;
+            console.warn('AI commentary generation failed:', error);
+            showToast('AI commentary unavailable', 'warning');
+          }
         }
       }
-    }
 
-    setDjCommentary(announcement);
+      setDjCommentary(announcement);
 
-    // Speak with volume ducking
-    if (settings.ttsEnabled && container.has('ttsService')) {
-      const ttsService = getTTSService();
-      try {
+      // Speak with volume ducking
+      if (settingsRef.current.ttsEnabled && container.has('ttsService')) {
+        const ttsService = getTTSService();
         const player = playerRef.current;
         const savedVolume = player?.getVolume?.() ?? 80;
-        if (player?.setVolume) player.setVolume(Math.round(savedVolume * 0.2));
+        try {
+          if (player?.setVolume) player.setVolume(Math.round(savedVolume * 0.2));
 
-        if (cachedAudioBlob && ttsService.speakFromBlob) {
-          await ttsService.speakFromBlob(cachedAudioBlob);
-        } else {
-          await ttsService.speak(announcement);
+          if (cachedAudioBlob && ttsService.speakFromBlob) {
+            await ttsService.speakFromBlob(cachedAudioBlob);
+          } else {
+            await ttsService.speak(announcement);
+          }
+        } catch (error) {
+          console.warn('TTS failed:', error);
+          showToast('Text-to-speech failed', 'warning');
+        } finally {
+          if (player?.setVolume) player.setVolume(savedVolume);
         }
-
-        if (player?.setVolume) player.setVolume(savedVolume);
-      } catch (error) {
-        console.warn('TTS failed:', error);
-        showToast('Text-to-speech failed', 'warning');
-        const player = playerRef.current;
-        const saved = localStorage.getItem('djai_volume');
-        if (player?.setVolume) player.setVolume(saved ? parseInt(saved, 10) : 80);
+        if (myPlayId !== playRequestIdRef.current) return;
       }
     }
 
     // Build a SearchResult from the Track to call the provider interface.
     let searchResult: SearchResult;
-    if (settings.currentProvider === 'spotify') {
+    if (providerName === 'spotify') {
       searchResult = { id: track.id, title: track.name, artist: track.artist, providerData: { uri: `spotify:track:${track.id}` } };
-    } else if (settings.currentProvider === 'apple') {
+    } else if (providerName === 'apple') {
       searchResult = { id: track.id, title: track.name, artist: track.artist, providerData: { appleMusicId: track.id } };
     } else {
       searchResult = { id: track.id, title: track.name, artist: track.artist, providerData: { videoId: track.id } };
@@ -483,7 +499,7 @@ function MainApp() {
 
     try {
       const playbackId = await provider.playTrack(searchResult);
-      if (settings.currentProvider === 'youtube' && playerRef.current) {
+      if (providerName === 'youtube' && playerRef.current) {
         playerRef.current.loadVideoById(playbackId);
       }
       setIsPlaying(true);
@@ -546,27 +562,29 @@ function MainApp() {
   };
 
   const handlePlayPause = () => {
-    const provider = providers.current.get(settings.currentProvider);
+    const s = settingsRef.current;
+    const provider = providers.current.get(s.currentProvider);
+    const playing = isPlayingRef.current;
+    const ct = currentTrackRef.current;
+    const pl = playlistRef.current;
 
-    if (isPlaying) {
+    if (playing) {
       provider?.pause().catch(console.error);
-      // YouTube-specific iframe command
-      if (settings.currentProvider === 'youtube' && playerRef.current) {
+      if (s.currentProvider === 'youtube' && playerRef.current) {
         playerRef.current.pauseVideo();
       }
       setIsPlaying(false);
-      window.electron?.tray?.updateInfo({ title: currentTrack?.name || 'DJ.ai', artist: currentTrack?.artist || '', isPlaying: false });
+      window.electron?.tray?.updateInfo({ title: ct?.name || 'DJ.ai', artist: ct?.artist || '', isPlaying: false });
     } else {
-      if (!currentTrack && playlist.length > 0) {
-        handlePlayTrack(playlist[0]);
+      if (!ct && pl.length > 0) {
+        handlePlayTrack(pl[0]);
       } else {
         provider?.play().catch(console.error);
-        // YouTube-specific iframe command
-        if (settings.currentProvider === 'youtube' && playerRef.current) {
+        if (s.currentProvider === 'youtube' && playerRef.current) {
           playerRef.current.playVideo();
         }
         setIsPlaying(true);
-        window.electron?.tray?.updateInfo({ title: currentTrack?.name || 'DJ.ai', artist: currentTrack?.artist || '', isPlaying: true });
+        window.electron?.tray?.updateInfo({ title: ct?.name || 'DJ.ai', artist: ct?.artist || '', isPlaying: true });
       }
     }
   };
@@ -581,20 +599,20 @@ function MainApp() {
         return;
       }
     }
-    // No next playlist track — delegate to the provider's native next
-    providers.current.get(settings.currentProvider)?.next().catch(console.error);
+    providers.current.get(settingsRef.current.currentProvider)?.next().catch(console.error);
   };
 
   const handlePrevious = () => {
-    if (playlist.length > 0 && currentTrack) {
-      const idx = playlist.findIndex(t => t.id === currentTrack.id);
+    const pl = playlistRef.current;
+    const ct = currentTrackRef.current;
+    if (pl.length > 0 && ct) {
+      const idx = pl.findIndex(t => t.id === ct.id);
       if (idx > 0) {
-        handlePlayTrack(playlist[idx - 1]);
+        handlePlayTrack(pl[idx - 1]);
         return;
       }
     }
-    // No previous playlist track — delegate to the provider's native previous
-    providers.current.get(settings.currentProvider)?.previous().catch(console.error);
+    providers.current.get(settingsRef.current.currentProvider)?.previous().catch(console.error);
   };
 
   const handleConnectProvider = async (providerName: 'youtube' | 'spotify' | 'apple') => {
@@ -631,16 +649,16 @@ function MainApp() {
     console.log('Auth result:', authResult);
     
     if (authResult.success) {
-      setSettings({
-        ...settings,
+      setSettings(prev => ({
+        ...prev,
         providers: {
-          ...settings.providers,
+          ...prev.providers,
           [providerName]: {
-            ...settings.providers[providerName],
+            ...prev.providers[providerName],
             isConnected: true
           }
         }
-      });
+      }));
       setDjCommentary(`✅ Connected to ${provider.providerName}!`);
     } else if (authResult.requiresOAuth && authResult.oauthUrl) {
       console.log('Opening OAuth URL:', authResult.oauthUrl);
@@ -683,13 +701,13 @@ function MainApp() {
     const provider = providers.current.get(providerName);
     if (provider) {
       await provider.signOut();
-      setSettings({
-        ...settings,
+      setSettings(prev => ({
+        ...prev,
         providers: {
-          ...settings.providers,
+          ...prev.providers,
           [providerName]: { isConnected: false }
         }
-      });
+      }));
       setDjCommentary(`Disconnected from ${provider.providerName}`);
     }
   };
@@ -749,12 +767,23 @@ function MainApp() {
     }
   }, []); // Empty dependency array - run once on mount
 
+  // Stable handler refs for tray/keyboard — avoids stale closures since handlers read from refs
+  const handlePlayPauseRef = useRef(handlePlayPause);
+  const handleNextRef = useRef(handleNext);
+  const handlePreviousRef = useRef(handlePrevious);
+  useEffect(() => { handlePlayPauseRef.current = handlePlayPause; });
+  useEffect(() => { handleNextRef.current = handleNext; });
+  useEffect(() => { handlePreviousRef.current = handlePrevious; });
+
   // System tray playback controls (from tray context menu and media keys)
   useEffect(() => {
     if (!window.electron?.tray) return;
-    window.electron.tray.onPlaybackToggle(() => handlePlayPause());
-    window.electron.tray.onNextTrack(() => handleNext());
-    window.electron.tray.onPreviousTrack(() => handlePrevious());
+    const unsubs = [
+      window.electron.tray.onPlaybackToggle(() => handlePlayPauseRef.current()),
+      window.electron.tray.onNextTrack(() => handleNextRef.current()),
+      window.electron.tray.onPreviousTrack(() => handlePreviousRef.current()),
+    ];
+    return () => { unsubs.forEach(fn => typeof fn === 'function' && fn()); };
   }, []);
 
   const handleSettingsSave = (newSettings: SettingsConfig) => {
@@ -781,13 +810,13 @@ function MainApp() {
       ytProvider.authenticate().then(result => {
         if (result.success) {
           setDjCommentary('✅ YouTube Music connected! You can now search for music.');
-          setSettings({
-            ...newSettings,
+          setSettings(prev => ({
+            ...prev,
             providers: {
-              ...newSettings.providers,
-              youtube: { ...newSettings.providers.youtube, isConnected: true }
+              ...prev.providers,
+              youtube: { ...prev.providers.youtube, isConnected: true }
             }
-          });
+          }));
         } else {
           setDjCommentary('❌ YouTube connection failed. Check your API key.');
         }

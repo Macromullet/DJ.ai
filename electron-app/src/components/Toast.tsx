@@ -122,6 +122,18 @@ interface ToastContainerProps {
 }
 
 export function ToastContainer({ toasts = [], onDismiss }: ToastContainerProps) {
+  // Stable callbacks per toast ID to avoid resetting auto-dismiss timers on re-render
+  const dismissCallbacks = useRef(new Map<number, () => void>());
+  for (const toast of toasts) {
+    if (!dismissCallbacks.current.has(toast.id)) {
+      dismissCallbacks.current.set(toast.id, () => onDismiss?.(toast.id));
+    }
+  }
+  // Clean up stale entries
+  for (const id of dismissCallbacks.current.keys()) {
+    if (!toasts.some(t => t.id === id)) dismissCallbacks.current.delete(id);
+  }
+
   if (toasts.length === 0) return null;
 
   return (
@@ -130,7 +142,7 @@ export function ToastContainer({ toasts = [], onDismiss }: ToastContainerProps) 
         <ToastItem
           key={toast.id}
           toast={toast}
-          onDismiss={() => onDismiss?.(toast.id)}
+          onDismiss={dismissCallbacks.current.get(toast.id)!}
         />
       ))}
     </div>

@@ -25,6 +25,8 @@ public class RedisDeviceAuthService : IDeviceAuthService
     // In-memory fallback stores
     private readonly ConcurrentDictionary<string, DateTime> _fallbackDevices;
     private readonly ConcurrentDictionary<string, List<DateTime>> _fallbackRequestHistory;
+    private DateTime _lastSweepTime = DateTime.MinValue;
+    private static readonly TimeSpan SweepCooldown = TimeSpan.FromMinutes(1);
 
     public RedisDeviceAuthService(
         ILogger<RedisDeviceAuthService> logger,
@@ -308,7 +310,33 @@ public class RedisDeviceAuthService : IDeviceAuthService
             foreach (var key in oldest)
             {
                 _fallbackDevices.TryRemove(key, out _);
-                _fallbackRequestHistory.TryRemove(key, out _);
+                // Preserve request history — evicted devices that re-register
+                // must still be rate-limited by their prior request history.
+            }
+        }
+
+        // Sweep stale request histories for devices no longer active.
+        // Cooldown prevents O(N) iteration on every request when entries haven't expired.
+        if (_fallbackRequestHistory.Count > _fallbackDevices.Count * 2
+            && (DateTime.UtcNow - _lastSweepTime) > SweepCooldown)
+        {
+            _lastSweepTime = DateTime.UtcNow;
+            foreach (var key in _fallbackRequestHistory.Keys)
+            {
+                if (!_fallbackDevices.ContainsKey(key) &&
+                    _fallbackRequestHistory.TryGetValue(key, out var history))
+                {
+                    lock (history)
+                    {
+                        var allExpired = history.Count == 0 || history.All(r => (DateTime.UtcNow - r).TotalHours > 24);
+                        if (!allExpired) continue;
+                        // Remove while holding the lock so a concurrent request
+                        // that called GetOrAdd (same reference) and added a new
+                        // timestamp cannot be silently discarded.
+                        ((ICollection<KeyValuePair<string, List<DateTime>>>)_fallbackRequestHistory)
+                            .Remove(new KeyValuePair<string, List<DateTime>>(key, history));
+                    }
+                }
             }
         }
 

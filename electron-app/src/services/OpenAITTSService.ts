@@ -130,7 +130,7 @@ export class OpenAITTSService implements ITTSService {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${this.apiKey}`,
+          // Auth header injected by main process — never sent from renderer
         },
         body: {
           model: 'tts-1',

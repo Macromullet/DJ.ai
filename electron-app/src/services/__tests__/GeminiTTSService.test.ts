@@ -150,10 +150,13 @@ describe('GeminiTTSService', () => {
           method: 'POST',
           headers: expect.objectContaining({
             'Content-Type': 'application/json',
-            'x-goog-api-key': 'test-gemini-key',
           }),
         }),
       );
+
+      // Auth header is injected by main process — NOT sent from renderer
+      const sentHeaders = req.mock.calls[0][0].headers;
+      expect(sentHeaders).not.toHaveProperty('x-goog-api-key');
 
       const body = req.mock.calls[0][0].body;
       expect(body.contents[0].parts[0].text).toBe('Say hello');

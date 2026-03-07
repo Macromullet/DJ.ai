@@ -116,11 +116,14 @@ describe('AICommentaryService', () => {
           url: 'https://api.openai.com/v1/chat/completions',
           method: 'POST',
           headers: expect.objectContaining({
-            Authorization: 'Bearer sk-test',
             'Content-Type': 'application/json',
           }),
         }),
       );
+
+      // Auth header is injected by main process — NOT sent from renderer
+      const sentHeaders = reqMock.mock.calls[0][0].headers;
+      expect(sentHeaders).not.toHaveProperty('Authorization');
 
       const body = reqMock.mock.calls[0][0].body;
       expect(body.model).toBe('gpt-4o-mini');
@@ -163,11 +166,15 @@ describe('AICommentaryService', () => {
           url: 'https://api.anthropic.com/v1/messages',
           method: 'POST',
           headers: expect.objectContaining({
-            'x-api-key': 'ant-key',
             'anthropic-version': '2023-06-01',
+            'Content-Type': 'application/json',
           }),
         }),
       );
+
+      // Auth header is injected by main process — NOT sent from renderer
+      const sentHeaders = reqMock.mock.calls[0][0].headers;
+      expect(sentHeaders).not.toHaveProperty('x-api-key');
 
       const body = reqMock.mock.calls[0][0].body;
       expect(body.model).toBe('claude-sonnet-4-20250514');

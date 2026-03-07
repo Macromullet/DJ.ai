@@ -1,5 +1,6 @@
 const { app, BrowserWindow, ipcMain, shell, safeStorage, Notification, Tray, Menu, nativeImage, globalShortcut } = require('electron');
 const path = require('path');
+const fs = require('fs');
 const { isAllowedAIHost, isValidRedirectUri, isAllowedOAuthHost, isTTSResponseWithinLimit, isValidPlaybackAction, buildCSP, isOAuthCallback, isDjaiOAuthCallback, isAllowedExternalProtocol } = require('./validation.cjs');
 const { spawn } = require('child_process');
 
@@ -7,6 +8,76 @@ let mainWindow = null;
 let oauthWindow = null;
 let tray = null;
 let currentTrackInfo = { title: 'DJ.ai', artist: '' };
+
+// ============ MAIN-PROCESS API KEY STORE ============
+// Keys are stored encrypted on disk, decrypted only in main process memory.
+// The renderer NEVER receives plaintext keys.
+
+const API_KEYS_FILE = 'api-keys.enc';
+let apiKeyStore = { openaiApiKey: '', anthropicApiKey: '', elevenLabsApiKey: '', geminiApiKey: '' };
+
+function getApiKeysPath() {
+  return path.join(app.getPath('userData'), API_KEYS_FILE);
+}
+
+function loadApiKeys() {
+  try {
+    const filePath = getApiKeysPath();
+    if (!fs.existsSync(filePath)) return;
+    const encryptedBase64 = fs.readFileSync(filePath, 'utf-8');
+    if (!safeStorage.isEncryptionAvailable()) {
+      console.warn('safeStorage unavailable — cannot load API keys');
+      return;
+    }
+    const buffer = Buffer.from(encryptedBase64, 'base64');
+    const json = safeStorage.decryptString(buffer);
+    apiKeyStore = { ...apiKeyStore, ...JSON.parse(json) };
+    console.log('API keys loaded from encrypted storage');
+  } catch (err) {
+    console.error('Failed to load API keys:', err.message);
+  }
+}
+
+function persistApiKeys() {
+  try {
+    if (!safeStorage.isEncryptionAvailable()) {
+      throw new Error('safeStorage unavailable');
+    }
+    const json = JSON.stringify(apiKeyStore);
+    const encrypted = safeStorage.encryptString(json);
+    const filePath = getApiKeysPath();
+    const tmpPath = filePath + '.tmp';
+    // Atomic write: write to temp file, then rename to prevent corruption on crash
+    // Mode 0o600: owner read/write only (no group/other access)
+    fs.writeFileSync(tmpPath, encrypted.toString('base64'), { encoding: 'utf-8', mode: 0o600 });
+    fs.renameSync(tmpPath, filePath);
+  } catch (err) {
+    console.error('Failed to persist API keys:', err.message);
+  }
+}
+
+/** Inject the correct auth header for a given AI API host */
+function injectAuthHeaders(url, headers) {
+  try {
+    const parsed = new URL(url);
+    const host = parsed.hostname;
+    const injected = { ...headers };
+
+    if (host === 'api.openai.com' && apiKeyStore.openaiApiKey) {
+      injected['Authorization'] = `Bearer ${apiKeyStore.openaiApiKey}`;
+    } else if (host === 'api.anthropic.com' && apiKeyStore.anthropicApiKey) {
+      injected['x-api-key'] = apiKeyStore.anthropicApiKey;
+    } else if (host === 'api.elevenlabs.io' && apiKeyStore.elevenLabsApiKey) {
+      injected['xi-api-key'] = apiKeyStore.elevenLabsApiKey;
+    } else if (host === 'generativelanguage.googleapis.com' && apiKeyStore.geminiApiKey) {
+      injected['x-goog-api-key'] = apiKeyStore.geminiApiKey;
+    }
+
+    return injected;
+  } catch {
+    return headers;
+  }
+}
 
 const isDev = !app.isPackaged;
 
@@ -244,9 +315,12 @@ ipcMain.handle('ai-api-request', async (event, { url, method, headers, body }) =
 
     const parsed = new URL(url);
 
+    // Main process injects auth headers — renderer never sends real keys
+    const injectedHeaders = injectAuthHeaders(url, headers || {});
+
     const response = await fetch(parsed.href, {
       method: method || 'POST',
-      headers: headers || {},
+      headers: injectedHeaders,
       body: body ? JSON.stringify(body) : undefined,
     });
 
@@ -275,9 +349,11 @@ ipcMain.handle('ai-tts-request', async (event, { url, method, headers, body }) =
     }
 
     const parsed = new URL(url);
+    // Main process injects auth headers — renderer never sends real keys
+    const injectedHeaders = injectAuthHeaders(url, headers || {});
     const response = await fetch(parsed.href, {
       method: method || 'POST',
-      headers: headers || {},
+      headers: injectedHeaders,
       body: body ? JSON.stringify(body) : undefined,
     });
 
@@ -302,26 +378,45 @@ ipcMain.handle('ai-tts-request', async (event, { url, method, headers, body }) =
   }
 });
 
-// safeStorage IPC handlers
-ipcMain.handle('safe-storage-available', () => {
-  return safeStorage.isEncryptionAvailable();
-});
+// ============ API KEY MANAGEMENT IPC ============
+// The renderer sends plaintext keys during save ONLY — they are encrypted immediately
+// and stored on disk. The renderer never receives plaintext keys back.
 
-ipcMain.handle('safe-storage-encrypt', (event, plaintext) => {
-  if (!safeStorage.isEncryptionAvailable()) {
-    throw new Error('Encryption not available');
+ipcMain.handle('save-api-keys', async (_event, keys) => {
+  if (typeof keys !== 'object' || keys === null) {
+    throw new Error('Invalid keys object');
   }
-  return safeStorage.encryptString(plaintext).toString('base64');
+  for (const [key, value] of Object.entries(keys)) {
+    if (key in apiKeyStore && typeof value === 'string') {
+      // Non-empty string sets the key; empty string deletes it
+      apiKeyStore[key] = value;
+    }
+  }
+  persistApiKeys();
+  return true;
 });
 
-// SECURITY NOTE: Exposing a general-purpose decrypt IPC means that any XSS in
-// the renderer can exfiltrate all stored API keys. The ideal fix is to remove
-// this endpoint entirely and have the main process attach keys internally (see
-// ai-api-request handler). Until that refactor, rate-limit calls and log
-// attempts to mitigate automated exfiltration.
-const decryptCallTimestamps = [];
-const DECRYPT_MAX_CALLS = 5;
-const DECRYPT_WINDOW_MS = 60_000; // 1 minute
+ipcMain.handle('get-api-key-status', async () => {
+  return {
+    openaiApiKey: !!apiKeyStore.openaiApiKey,
+    anthropicApiKey: !!apiKeyStore.anthropicApiKey,
+    elevenLabsApiKey: !!apiKeyStore.elevenLabsApiKey,
+    geminiApiKey: !!apiKeyStore.geminiApiKey,
+  };
+});
+
+ipcMain.handle('clear-api-keys', async () => {
+  apiKeyStore = { openaiApiKey: '', anthropicApiKey: '', elevenLabsApiKey: '', geminiApiKey: '' };
+  try {
+    const filePath = getApiKeysPath();
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
+    }
+  } catch (err) {
+    console.error('Failed to delete API keys file:', err.message);
+  }
+  return true;
+});
 
 // Desktop notifications
 ipcMain.handle('show-notification', async (_event, { title, body, icon }) => {
@@ -338,28 +433,11 @@ ipcMain.handle('show-notification', async (_event, { title, body, icon }) => {
   return false;
 });
 
-ipcMain.handle('safe-storage-decrypt', (event, encrypted) => {
-  if (!safeStorage.isEncryptionAvailable()) {
-    throw new Error('Encryption not available');
-  }
-
-  const now = Date.now();
-  // Evict timestamps outside the current window
-  while (decryptCallTimestamps.length > 0 && decryptCallTimestamps[0] <= now - DECRYPT_WINDOW_MS) {
-    decryptCallTimestamps.shift();
-  }
-  if (decryptCallTimestamps.length >= DECRYPT_MAX_CALLS) {
-    console.error('safe-storage-decrypt rate limit exceeded — possible exfiltration attempt');
-    throw new Error('Rate limit exceeded for decryption — max 5 calls per minute');
-  }
-  decryptCallTimestamps.push(now);
-  console.warn(`safe-storage-decrypt called (${decryptCallTimestamps.length}/${DECRYPT_MAX_CALLS} in window)`);
-
-  const buffer = Buffer.from(encrypted, 'base64');
-  return safeStorage.decryptString(buffer);
-});
 
 app.whenReady().then(() => {
+  // Load encrypted API keys from disk into main-process memory
+  loadApiKeys();
+
   const { session } = require('electron');
   session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
     // Only apply CSP to the main app window — skip third-party origins
@@ -379,7 +457,7 @@ app.whenReady().then(() => {
     callback({
       responseHeaders: {
         ...details.responseHeaders,
-        'Content-Security-Policy': [buildCSP()]
+        'Content-Security-Policy': [buildCSP({ isDev })]
       }
     });
   });

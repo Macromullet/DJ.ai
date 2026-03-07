@@ -181,7 +181,6 @@ describe('OpenAITTSService', () => {
           url: 'https://api.openai.com/v1/audio/speech',
           method: 'POST',
           headers: expect.objectContaining({
-            Authorization: 'Bearer test-api-key',
             'Content-Type': 'application/json',
           }),
           body: expect.objectContaining({
@@ -192,6 +191,10 @@ describe('OpenAITTSService', () => {
           }),
         }),
       );
+
+      // Auth header is injected by main process — NOT sent from renderer
+      const sentHeaders = tts.mock.calls[0][0].headers;
+      expect(sentHeaders).not.toHaveProperty('Authorization');
     });
 
     it('plays audio via Audio element after successful fetch', async () => {

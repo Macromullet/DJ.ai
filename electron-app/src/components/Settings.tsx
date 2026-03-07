@@ -41,16 +41,56 @@ interface SettingsProps {
 }
 
 export function Settings({ config, onSave, onClose, onConnectProvider, onDisconnectProvider }: SettingsProps) {
-  const [localConfig, setLocalConfig] = useState<SettingsConfig>(config);
+  // Strip 'configured' placeholders from key fields for display
+  const [localConfig, setLocalConfig] = useState<SettingsConfig>(() => ({
+    ...config,
+    openaiApiKey: config.openaiApiKey === 'configured' ? '' : config.openaiApiKey,
+    anthropicApiKey: config.anthropicApiKey === 'configured' ? '' : config.anthropicApiKey,
+    elevenLabsApiKey: config.elevenLabsApiKey === 'configured' ? '' : config.elevenLabsApiKey,
+    geminiApiKey: config.geminiApiKey === 'configured' ? '' : config.geminiApiKey,
+  }));
+
+  // Track which key fields the user has actually edited
+  const [dirtyKeys, setDirtyKeys] = useState<Set<string>>(new Set());
 
   useEffect(() => {
-    setLocalConfig(config);
+    setLocalConfig({
+      ...config,
+      openaiApiKey: config.openaiApiKey === 'configured' ? '' : config.openaiApiKey,
+      anthropicApiKey: config.anthropicApiKey === 'configured' ? '' : config.anthropicApiKey,
+      elevenLabsApiKey: config.elevenLabsApiKey === 'configured' ? '' : config.elevenLabsApiKey,
+      geminiApiKey: config.geminiApiKey === 'configured' ? '' : config.geminiApiKey,
+    });
+    setDirtyKeys(new Set());
   }, [config]);
 
   const handleSave = () => {
-    // Persistence is handled by the parent via onSave — do not duplicate here.
-    onSave(localConfig);
+    const mergedConfig = { ...localConfig };
+    const keyFields = ['openaiApiKey', 'anthropicApiKey', 'elevenLabsApiKey', 'geminiApiKey'] as const;
+    for (const field of keyFields) {
+      if (dirtyKeys.has(field)) {
+        // User explicitly changed this field — send actual value (empty = delete)
+      } else if (config[field]) {
+        // Derive status from CURRENT config prop (not stale initial state)
+        // to avoid race condition if Settings opens before async key load
+        mergedConfig[field] = 'configured';
+      }
+    }
+    onSave(mergedConfig);
     onClose();
+  };
+
+  // Derive key status from current config prop for UI display
+  const keyStatus = {
+    openaiApiKey: !!config.openaiApiKey,
+    anthropicApiKey: !!config.anthropicApiKey,
+    elevenLabsApiKey: !!config.elevenLabsApiKey,
+    geminiApiKey: !!config.geminiApiKey,
+  };
+
+  const handleKeyChange = (field: string, value: string) => {
+    setLocalConfig({ ...localConfig, [field]: value });
+    setDirtyKeys(prev => new Set(prev).add(field));
   };
 
   const openAIVoices = [
@@ -162,9 +202,9 @@ export function Settings({ config, onSave, onClose, onConnectProvider, onDisconn
               </label>
               <input
                 type="password"
-                placeholder="sk-..."
+                placeholder={keyStatus.openaiApiKey ? '••• Key configured (enter new to replace)' : 'sk-...'}
                 value={localConfig.openaiApiKey}
-                onChange={(e) => setLocalConfig({...localConfig, openaiApiKey: e.target.value})}
+                onChange={(e) => handleKeyChange('openaiApiKey', e.target.value)}
                 disabled={localConfig.aiProvider !== 'openai'}
                 className="api-key-input"
               />
@@ -184,9 +224,9 @@ export function Settings({ config, onSave, onClose, onConnectProvider, onDisconn
               </label>
               <input
                 type="password"
-                placeholder="sk-ant-..."
+                placeholder={keyStatus.anthropicApiKey ? '••• Key configured (enter new to replace)' : 'sk-ant-...'}
                 value={localConfig.anthropicApiKey}
-                onChange={(e) => setLocalConfig({...localConfig, anthropicApiKey: e.target.value})}
+                onChange={(e) => handleKeyChange('anthropicApiKey', e.target.value)}
                 disabled={localConfig.aiProvider !== 'anthropic'}
                 className="api-key-input"
               />
@@ -246,9 +286,9 @@ export function Settings({ config, onSave, onClose, onConnectProvider, onDisconn
                       <label>Gemini API Key</label>
                       <input
                         type="password"
-                        placeholder="Enter Gemini API key"
+                        placeholder={keyStatus.geminiApiKey ? '••• Key configured (enter new to replace)' : 'Enter Gemini API key'}
                         value={localConfig.geminiApiKey}
-                        onChange={(e) => setLocalConfig({...localConfig, geminiApiKey: e.target.value})}
+                        onChange={(e) => handleKeyChange('geminiApiKey', e.target.value)}
                         className="api-key-input"
                       />
                       <p className="help-text">Get from <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer">Google AI Studio</a></p>
@@ -261,9 +301,9 @@ export function Settings({ config, onSave, onClose, onConnectProvider, onDisconn
                     <label>ElevenLabs API Key</label>
                     <input
                       type="password"
-                      placeholder="Enter ElevenLabs API key"
+                      placeholder={keyStatus.elevenLabsApiKey ? '••• Key configured (enter new to replace)' : 'Enter ElevenLabs API key'}
                       value={localConfig.elevenLabsApiKey}
-                      onChange={(e) => setLocalConfig({...localConfig, elevenLabsApiKey: e.target.value})}
+                      onChange={(e) => handleKeyChange('elevenLabsApiKey', e.target.value)}
                       className="api-key-input"
                     />
                     <p className="help-text">Get from <a href="https://elevenlabs.io/" target="_blank" rel="noopener noreferrer">elevenlabs.io</a> - Premium realistic voices</p>

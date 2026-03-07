@@ -72,7 +72,7 @@ function MainApp() {
 
   const { showToast } = useToast();
 
-  // Load API keys asynchronously (safeStorage is async in Electron)
+  // Load API keys asynchronously (returns 'configured' placeholders in Electron)
   useEffect(() => {
     getApiKeys().then(secrets => {
       setSettings(prev => ({
@@ -695,16 +695,38 @@ function MainApp() {
     return () => { unsubs.forEach(fn => typeof fn === 'function' && fn()); };
   }, []);
 
-  const handleSettingsSave = (newSettings: SettingsConfig) => {
-    setSettings(newSettings);
+  const handleSettingsSave = async (newSettings: SettingsConfig) => {
+    // Sanitize: replace plaintext keys with 'configured' placeholder before
+    // storing in React state — prevents keys lingering in memory/DevTools
+    const sanitized = { ...newSettings };
+    const keyFields = ['openaiApiKey', 'anthropicApiKey', 'elevenLabsApiKey', 'geminiApiKey'] as const;
+    const keysToSave: Record<string, string> = {};
+    for (const field of keyFields) {
+      const val = sanitized[field];
+      if (val && val !== 'configured') {
+        keysToSave[field] = val;
+        sanitized[field] = 'configured';
+      }
+    }
 
-    // Persist API keys in a separate store (fire-and-forget)
-    void saveApiKeys({
-      openaiApiKey: newSettings.openaiApiKey,
-      anthropicApiKey: newSettings.anthropicApiKey,
-      elevenLabsApiKey: newSettings.elevenLabsApiKey,
-      geminiApiKey: newSettings.geminiApiKey,
-    });
+    // Merge saves and deletions into a single atomic call to avoid races
+    for (const field of keyFields) {
+      if (newSettings[field] === '') {
+        keysToSave[field] = '';
+      }
+    }
+
+    if (Object.keys(keysToSave).length > 0) {
+      try {
+        await saveApiKeys(keysToSave);
+      } catch (err) {
+        console.error('Failed to save API keys:', err);
+        showToast('Failed to save API keys', 'error');
+        return;
+      }
+    }
+
+    setSettings(sanitized);
 
     // Strip secrets before writing the main settings blob
     const { openaiApiKey: _o, anthropicApiKey: _a, elevenLabsApiKey: _e, geminiApiKey: _g, ...safeSettings } = newSettings;

@@ -150,8 +150,8 @@ export class ElevenLabsTTSService implements ITTSService {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'xi-api-key': this.apiKey,
           'Accept': 'audio/mpeg',
+          // Auth header injected by main process — never sent from renderer
         },
         body,
       });

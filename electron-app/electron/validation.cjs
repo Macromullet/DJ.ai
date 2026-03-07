@@ -96,12 +96,17 @@ function isValidPlaybackAction(action) {
 
 /**
  * Build the Content-Security-Policy header value applied to the main app window.
+ * @param {{ isDev?: boolean }} [options] - If isDev is true, includes unsafe-inline in script-src for Vite HMR
  * @returns {string}
  */
-function buildCSP() {
+function buildCSP(options = {}) {
+  const isDev = options.isDev || false;
+  // In production, Vite bundles all JS into external files — no inline scripts needed.
+  // In dev mode, Vite HMR requires inline scripts.
+  const scriptInline = isDev ? " 'unsafe-inline'" : '';
   return (
     "default-src 'self'; " +
-    "script-src 'self' 'unsafe-inline' https://sdk.scdn.co https://apisdk.scdn.co https://js-cdn.music.apple.com; " +
+    `script-src 'self'${scriptInline} https://sdk.scdn.co https://apisdk.scdn.co https://js-cdn.music.apple.com; ` +
     "style-src 'self' 'unsafe-inline'; " +
     "img-src 'self' data: https: http:; " +
     "media-src 'self' https:; " +

@@ -200,7 +200,7 @@ export class GeminiTTSService implements ITTSService {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-goog-api-key': this.apiKey,
+          // Auth header injected by main process — never sent from renderer
         },
         body: this.buildRequestBody(text),
       });

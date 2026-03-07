@@ -142,11 +142,12 @@ describe('ElevenLabsTTSService', () => {
       );
     });
 
-    it('sends xi-api-key header', async () => {
+    it('does not send xi-api-key header (main process injects it)', async () => {
       const tts = setupTtsRequestMock();
       await service.speak('Hello');
+      expect(tts.mock.calls[0][0].headers).not.toHaveProperty('xi-api-key');
       expect(tts.mock.calls[0][0].headers).toEqual(
-        expect.objectContaining({ 'xi-api-key': 'test-eleven-key' }),
+        expect.objectContaining({ 'Content-Type': 'application/json', 'Accept': 'audio/mpeg' }),
       );
     });
 

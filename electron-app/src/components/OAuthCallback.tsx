@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 
 interface OAuthCallbackProps {
@@ -8,24 +8,26 @@ interface OAuthCallbackProps {
 export function OAuthCallback({ onSuccess }: OAuthCallbackProps) {
   const navigate = useNavigate();
   const location = useLocation();
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const handleCallback = async () => {
       const params = new URLSearchParams(location.search);
       const code = params.get('code');
       const state = params.get('state');
-      const error = params.get('error');
+      const oauthError = params.get('error');
 
-      if (error) {
-        console.error('OAuth error:', error);
-        alert(`Authentication failed: ${error}`);
-        navigate('/');
+      if (oauthError) {
+        console.error('OAuth error:', oauthError);
+        setError(`Authentication failed: ${oauthError}`);
+        setTimeout(() => navigate('/'), 3000);
         return;
       }
 
       if (!code) {
         console.error('No authorization code received');
-        navigate('/');
+        setError('No authorization code received. Redirecting...');
+        setTimeout(() => navigate('/'), 3000);
         return;
       }
 
@@ -49,7 +51,17 @@ export function OAuthCallback({ onSuccess }: OAuthCallbackProps) {
       navigate('/');
     };
 
-    handleCallback();
+    try {
+      handleCallback().catch((err) => {
+        console.error('OAuth callback error:', err);
+        setError('Authentication failed unexpectedly. Redirecting...');
+        setTimeout(() => navigate('/'), 3000);
+      });
+    } catch (err) {
+      console.error('OAuth callback error:', err);
+      setError('Authentication failed unexpectedly. Redirecting...');
+      setTimeout(() => navigate('/'), 3000);
+    }
   }, [location, navigate, onSuccess]);
 
   return (
@@ -59,13 +71,13 @@ export function OAuthCallback({ onSuccess }: OAuthCallbackProps) {
       justifyContent: 'center',
       height: '100vh',
       background: '#1a1a1a',
-      color: '#FFD700',
+      color: error ? '#ff4444' : '#FFD700',
       flexDirection: 'column',
       gap: '20px'
     }}>
-      <div style={{ fontSize: '48px' }}>🔄</div>
-      <h2>Completing authentication...</h2>
-      <p>You'll be redirected shortly.</p>
+      <div style={{ fontSize: '48px' }}>{error ? '❌' : '🔄'}</div>
+      <h2>{error ? 'Authentication Error' : 'Completing authentication...'}</h2>
+      <p>{error || "You'll be redirected shortly."}</p>
     </div>
   );
 }

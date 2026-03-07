@@ -125,7 +125,7 @@ export class GeminiTTSService implements ITTSService {
       this.currentAudio = null;
     }
     if (this.audioContext && this.audioContext.state !== 'closed') {
-      this.audioContext.close().catch(() => {});
+      this.audioContext.close().catch(err => console.warn('AudioContext close:', err));
       this.audioContext = null;
     }
   }
@@ -332,7 +332,7 @@ export class GeminiTTSService implements ITTSService {
       this.resolveCurrentPlayback = resolve;
       source.onended = () => {
         this.resolveCurrentPlayback = null;
-        this.audioContext?.close().catch(() => {});
+        this.audioContext?.close().catch(err => console.warn('AudioContext close:', err));
         this.audioContext = null;
         resolve();
       };
@@ -341,7 +341,7 @@ export class GeminiTTSService implements ITTSService {
         source.start(0);
       } catch (err) {
         this.resolveCurrentPlayback = null;
-        this.audioContext?.close().catch(() => {});
+        this.audioContext?.close().catch(closeErr => console.warn('AudioContext close:', closeErr));
         this.audioContext = null;
         reject(err);
       }

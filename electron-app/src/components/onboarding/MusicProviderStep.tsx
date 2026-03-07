@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { IMusicProvider } from '../../types/IMusicProvider';
 import './MusicProviderStep.css';
 
@@ -37,7 +37,8 @@ export const MusicProviderStep: React.FC<MusicProviderStepProps> = ({
   connectedProviders,
   onProviderConnected,
 }) => {
-  const [connecting, setConnecting] = React.useState<string | null>(null);
+  const [connecting, setConnecting] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   // Poll for authentication changes after OAuth popup, with timeout
   useEffect(() => {
@@ -63,6 +64,7 @@ export const MusicProviderStep: React.FC<MusicProviderStepProps> = ({
   const handleConnect = useCallback(async (providerId: string) => {
     if (connectedProviders.has(providerId) || connecting) return;
     setConnecting(providerId);
+    setError(null);
     try {
       await onConnectProvider(providerId);
       // Check immediately after the async call
@@ -73,6 +75,8 @@ export const MusicProviderStep: React.FC<MusicProviderStepProps> = ({
       }
     } catch (err) {
       console.error(`Failed to connect ${providerId}:`, err);
+      const message = err instanceof Error ? err.message : 'Connection failed. Please try again.';
+      setError(message);
       setConnecting(null);
     }
   }, [connectedProviders, connecting, onConnectProvider, providers, onProviderConnected]);
@@ -123,6 +127,12 @@ export const MusicProviderStep: React.FC<MusicProviderStepProps> = ({
           );
         })}
       </div>
+
+      {error && (
+        <p className="mp-error" role="alert">
+          ⚠️ {error}
+        </p>
+      )}
 
       {connectedProviders.size > 0 && (
         <p className="mp-connected-note">

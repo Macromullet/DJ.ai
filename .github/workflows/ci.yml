@@ -11,8 +11,31 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  changes:
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+      frontend: ${{ steps.filter.outputs.frontend }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            backend:
+              - 'oauth-proxy/**'
+              - 'oauth-proxy.Tests/**'
+              - 'DJai.AppHost/**'
+              - 'DJai.ServiceDefaults/**'
+              - 'DJ.ai.sln'
+            frontend:
+              - 'electron-app/**'
+
   backend:
     name: Backend (.NET)
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -37,6 +60,8 @@ jobs:
 
   frontend:
     name: Frontend (React + TypeScript)
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -68,6 +93,7 @@ jobs:
   electron-package:
     name: Electron Package Check
     needs: [frontend]
+    if: needs.frontend.result == 'success'
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]

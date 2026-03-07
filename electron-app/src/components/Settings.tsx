@@ -50,14 +50,6 @@ export function Settings({ config, onSave, onClose, onConnectProvider, onDisconn
     geminiApiKey: config.geminiApiKey === 'configured' ? '' : config.geminiApiKey,
   }));
 
-  // Track which keys were already configured when Settings opened
-  const [keyStatus] = useState({
-    openaiApiKey: !!config.openaiApiKey,
-    anthropicApiKey: !!config.anthropicApiKey,
-    elevenLabsApiKey: !!config.elevenLabsApiKey,
-    geminiApiKey: !!config.geminiApiKey,
-  });
-
   // Track which key fields the user has actually edited
   const [dirtyKeys, setDirtyKeys] = useState<Set<string>>(new Set());
 
@@ -78,13 +70,22 @@ export function Settings({ config, onSave, onClose, onConnectProvider, onDisconn
     for (const field of keyFields) {
       if (dirtyKeys.has(field)) {
         // User explicitly changed this field — send actual value (empty = delete)
-      } else if (keyStatus[field]) {
-        // User didn't touch this field and key was configured — preserve it
+      } else if (config[field]) {
+        // Derive status from CURRENT config prop (not stale initial state)
+        // to avoid race condition if Settings opens before async key load
         mergedConfig[field] = 'configured';
       }
     }
     onSave(mergedConfig);
     onClose();
+  };
+
+  // Derive key status from current config prop for UI display
+  const keyStatus = {
+    openaiApiKey: !!config.openaiApiKey,
+    anthropicApiKey: !!config.anthropicApiKey,
+    elevenLabsApiKey: !!config.elevenLabsApiKey,
+    geminiApiKey: !!config.geminiApiKey,
   };
 
   const handleKeyChange = (field: string, value: string) => {

@@ -45,7 +45,11 @@ function persistApiKeys() {
     }
     const json = JSON.stringify(apiKeyStore);
     const encrypted = safeStorage.encryptString(json);
-    fs.writeFileSync(getApiKeysPath(), encrypted.toString('base64'), 'utf-8');
+    const filePath = getApiKeysPath();
+    const tmpPath = filePath + '.tmp';
+    // Atomic write: write to temp file, then rename to prevent corruption on crash
+    fs.writeFileSync(tmpPath, encrypted.toString('base64'), 'utf-8');
+    fs.renameSync(tmpPath, filePath);
   } catch (err) {
     console.error('Failed to persist API keys:', err.message);
   }

@@ -317,16 +317,23 @@ public class RedisDeviceAuthService : IDeviceAuthService
         // Prevents unbounded memory growth during prolonged Redis outages.
         if (_fallbackRequestHistory.Count > _fallbackDevices.Count * 2)
         {
-            var staleHistoryCutoff = DateTime.UtcNow.AddHours(-24);
             foreach (var key in _fallbackRequestHistory.Keys)
             {
                 if (!_fallbackDevices.ContainsKey(key) &&
                     _fallbackRequestHistory.TryGetValue(key, out var history))
                 {
                     bool allExpired;
-                    lock (history) { allExpired = history.Count == 0 || history.All(r => (DateTime.UtcNow - r).TotalHours > 24); }
-                    if (allExpired)
-                        _fallbackRequestHistory.TryRemove(key, out _);
+                    lock (history)
+                    {
+                        allExpired = history.Count == 0 || history.All(r => (DateTime.UtcNow - r).TotalHours > 24);
+                        if (!allExpired) continue;
+                        // Re-check under lock: if a concurrent request snuck in
+                        // between our check and removal, the list is still valid.
+                        // ICollection<KeyValuePair>.Remove ensures we only remove
+                        // if the reference is still the same object we inspected.
+                    }
+                    ((ICollection<KeyValuePair<string, List<DateTime>>>)_fallbackRequestHistory)
+                        .Remove(new KeyValuePair<string, List<DateTime>>(key, history));
                 }
             }
         }

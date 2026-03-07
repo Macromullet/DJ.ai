@@ -1,5 +1,6 @@
 const { app, BrowserWindow, ipcMain, shell, safeStorage, Notification, Tray, Menu, nativeImage, globalShortcut } = require('electron');
 const path = require('path');
+const { isAllowedAIHost, isValidRedirectUri, isAllowedOAuthHost, isTTSResponseWithinLimit, isValidPlaybackAction, buildCSP, isOAuthCallback, isDjaiOAuthCallback, isAllowedExternalProtocol, isValidYouTubeMusicUrl } = require('./validation.cjs');
 const { spawn } = require('child_process');
 
 let mainWindow = null;
@@ -40,8 +41,8 @@ app.on('open-url', (event, url) => {
 });
 
 function handleDeepLink(url) {
-  // Parse djai://oauth/callback?code=XXX&state=YYY
-  if (mainWindow && url.startsWith('djai://oauth/callback')) {
+  // Parse djai://oauth/callback?code=XXX&state=YYY using proper URL parsing
+  if (mainWindow && isDjaiOAuthCallback(url)) {
     // Forward to the renderer's React Router
     const callbackUrl = url.replace('djai://', 'http://localhost/');
     mainWindow.webContents.send('oauth-deep-link', callbackUrl);
@@ -78,15 +79,10 @@ function createWindow() {
   }
 
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
-    try {
-      const parsed = new URL(url);
-      if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
-        shell.openExternal(url);
-      } else {
-        console.warn(`Blocked openExternal for disallowed protocol: ${parsed.protocol}`);
-      }
-    } catch (e) {
-      console.warn('Blocked openExternal for invalid URL:', url);
+    if (isAllowedExternalProtocol(url)) {
+      shell.openExternal(url);
+    } else {
+      console.warn(`Blocked openExternal for disallowed protocol: ${url}`);
     }
     return { action: 'deny' };
   });
@@ -130,15 +126,10 @@ function createYouTubeMusicWindow() {
   }
 
   ytMusicWindow.webContents.setWindowOpenHandler(({ url }) => {
-    try {
-      const parsed = new URL(url);
-      if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
-        shell.openExternal(url);
-      } else {
-        console.warn(`Blocked openExternal for disallowed protocol: ${parsed.protocol}`);
-      }
-    } catch (e) {
-      console.warn('Blocked openExternal for invalid URL:', url);
+    if (isAllowedExternalProtocol(url)) {
+      shell.openExternal(url);
+    } else {
+      console.warn(`Blocked openExternal for disallowed protocol: ${url}`);
     }
     return { action: 'deny' };
   });
@@ -214,12 +205,11 @@ function registerMediaKeys() {
   }
 }
 
-// Allowlist of valid playback control actions
-const VALID_ACTIONS = new Set(['play', 'pause', 'next', 'previous']);
+// Playback action validation uses isValidPlaybackAction from validation.cjs
 
 // IPC Handlers for YouTube Music control
 ipcMain.handle('yt-music-play-url', async (event, url) => {
-  if (!url || !url.startsWith('https://music.youtube.com/')) {
+  if (!url || !isValidYouTubeMusicUrl(url)) {
     return { success: false, error: 'Invalid YouTube Music URL' };
   }
 
@@ -237,7 +227,7 @@ ipcMain.handle('yt-music-control', async (event, action) => {
     return false;
   }
 
-  if (!VALID_ACTIONS.has(action)) {
+  if (!isValidPlaybackAction(action)) {
     console.error('Invalid YT Music control action:', action);
     return false;
   }
@@ -346,37 +336,16 @@ ipcMain.handle('open-oauth-window', async (event, { url, redirectUri }) => {
   }
 
   // Validate redirectUri — must be a non-empty expected callback URL
-  const ALLOWED_REDIRECT_ORIGINS = ['http://localhost', 'djai://oauth'];
-  let redirectOriginValid = false;
-  try {
-    const parsedRedirect = new URL(redirectUri || '');
-    // For http://localhost:PORT/path, origin is http://localhost:PORT
-    // For djai://oauth/callback, check protocol + hostname
-    redirectOriginValid = parsedRedirect.protocol === 'djai:' 
-      ? redirectUri.startsWith('djai://oauth/callback')
-      : parsedRedirect.hostname === 'localhost' && parsedRedirect.protocol === 'http:';
-  } catch { /* invalid URL */ }
-  if (!redirectOriginValid) {
+  if (!isValidRedirectUri(redirectUri)) {
     console.error('open-oauth-window blocked: invalid redirectUri', redirectUri);
     return { error: 'Invalid redirect URI' };
   }
 
   // Validate the OAuth URL before creating window
-  const ALLOWED_OAUTH_HOSTS = new Set([
-    'accounts.google.com',
-    'accounts.spotify.com',
-    'appleid.apple.com',
-    'authorize.music.apple.com',
-  ]);
-
   try {
     const parsed = new URL(url);
-    if (parsed.protocol !== 'https:') {
-      console.error(`open-oauth-window blocked: only HTTPS is allowed (got ${parsed.protocol})`);
-      return { error: 'Only HTTPS OAuth URLs are allowed' };
-    }
-    if (!ALLOWED_OAUTH_HOSTS.has(parsed.hostname)) {
-      console.error(`open-oauth-window blocked: ${parsed.hostname} is not an allowed OAuth host`);
+    if (!isAllowedOAuthHost(url)) {
+      console.error(`open-oauth-window blocked: ${parsed.hostname} is not an allowed OAuth host or protocol is not HTTPS`);
       return { error: 'OAuth host not in allowlist' };
     }
   } catch (e) {
@@ -398,7 +367,7 @@ ipcMain.handle('open-oauth-window', async (event, { url, redirectUri }) => {
   oauthWindow.loadURL(url);
 
   oauthWindow.webContents.on('will-redirect', (_event, url) => {
-    if (url && url.startsWith(redirectUri)) {
+    if (url && isOAuthCallback(url, redirectUri)) {
       _event.preventDefault();
       if (mainWindow) {
         mainWindow.webContents.send('oauth-deep-link', url);
@@ -408,7 +377,7 @@ ipcMain.handle('open-oauth-window', async (event, { url, redirectUri }) => {
   });
 
   oauthWindow.webContents.on('will-navigate', (_event, url) => {
-    if (url && url.startsWith(redirectUri)) {
+    if (url && isOAuthCallback(url, redirectUri)) {
       _event.preventDefault();
       if (mainWindow) {
         mainWindow.webContents.send('oauth-deep-link', url);
@@ -423,18 +392,12 @@ ipcMain.handle('open-oauth-window', async (event, { url, redirectUri }) => {
 });
 
 // AI API proxy — routes requests through the main process to bypass CORS
-const AI_API_ALLOWLIST = new Set([
-  'api.openai.com',
-  'api.anthropic.com',
-  'generativelanguage.googleapis.com',
-  'api.elevenlabs.io',
-]);
+// Allowlist is defined in validation.cjs (AI_API_ALLOWLIST)
 
 ipcMain.handle('ai-api-request', async (event, { url, method, headers, body }) => {
   try {
-    const parsed = new URL(url);
-    if (!AI_API_ALLOWLIST.has(parsed.hostname)) {
-      console.error(`ai-api-request blocked: ${parsed.hostname} is not in the allowlist`);
+    if (!isAllowedAIHost(url)) {
+      console.error(`ai-api-request blocked: ${url} is not in the allowlist or not HTTPS`);
       return {
         ok: false,
         status: 403,
@@ -443,15 +406,7 @@ ipcMain.handle('ai-api-request', async (event, { url, method, headers, body }) =
       };
     }
 
-    if (parsed.protocol !== 'https:') {
-      console.error(`ai-api-request blocked: only HTTPS is allowed (got ${parsed.protocol})`);
-      return {
-        ok: false,
-        status: 403,
-        statusText: 'Only HTTPS requests are allowed',
-        body: null,
-      };
-    }
+    const parsed = new URL(url);
 
     const response = await fetch(parsed.href, {
       method: method || 'POST',
@@ -479,14 +434,11 @@ ipcMain.handle('ai-api-request', async (event, { url, method, headers, body }) =
 // IPC handler for TTS audio requests (returns base64-encoded binary audio)
 ipcMain.handle('ai-tts-request', async (event, { url, method, headers, body }) => {
   try {
-    const parsed = new URL(url);
-    if (!AI_API_ALLOWLIST.has(parsed.hostname)) {
+    if (!isAllowedAIHost(url)) {
       return { ok: false, status: 403, statusText: 'Forbidden: domain not in allowlist', body: null };
     }
-    if (parsed.protocol !== 'https:') {
-      return { ok: false, status: 403, statusText: 'Only HTTPS requests are allowed', body: null };
-    }
 
+    const parsed = new URL(url);
     const response = await fetch(parsed.href, {
       method: method || 'POST',
       headers: headers || {},
@@ -500,12 +452,11 @@ ipcMain.handle('ai-tts-request', async (event, { url, method, headers, body }) =
 
     // Return binary audio as base64 (with size limit to prevent OOM)
     const contentLength = parseInt(response.headers.get('content-length') || '0', 10);
-    const MAX_TTS_BYTES = 10 * 1024 * 1024; // 10 MB
-    if (contentLength > MAX_TTS_BYTES) {
+    if (!isTTSResponseWithinLimit(contentLength)) {
       return { ok: false, status: 413, statusText: 'TTS response too large', body: null };
     }
     const buffer = await response.arrayBuffer();
-    if (buffer.byteLength > MAX_TTS_BYTES) {
+    if (!isTTSResponseWithinLimit(buffer.byteLength)) {
       return { ok: false, status: 413, statusText: 'TTS response too large', body: null };
     }
     const base64 = Buffer.from(buffer).toString('base64');
@@ -591,15 +542,7 @@ app.whenReady().then(() => {
     callback({
       responseHeaders: {
         ...details.responseHeaders,
-        'Content-Security-Policy': [
-          "default-src 'self'; " +
-          "script-src 'self' 'unsafe-inline' https://www.youtube.com https://s.ytimg.com https://sdk.scdn.co https://apisdk.scdn.co https://js-cdn.music.apple.com; " +
-          "style-src 'self' 'unsafe-inline'; " +
-          "img-src 'self' data: https: http:; " +
-          "media-src 'self' https:; " +
-          "connect-src 'self' http://localhost:* https://*.azurewebsites.net https://*.azurestaticapps.net https://api.openai.com https://api.anthropic.com https://www.googleapis.com https://generativelanguage.googleapis.com https://accounts.google.com https://api.spotify.com https://accounts.spotify.com https://apisdk.scdn.co https://api.music.apple.com https://authorize.music.apple.com https://api.elevenlabs.io; " +
-          "frame-src https://www.youtube.com https://music.youtube.com;"
-        ]
+        'Content-Security-Policy': [buildCSP()]
       }
     });
   });

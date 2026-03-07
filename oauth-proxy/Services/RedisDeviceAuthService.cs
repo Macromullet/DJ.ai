@@ -25,6 +25,8 @@ public class RedisDeviceAuthService : IDeviceAuthService
     // In-memory fallback stores
     private readonly ConcurrentDictionary<string, DateTime> _fallbackDevices;
     private readonly ConcurrentDictionary<string, List<DateTime>> _fallbackRequestHistory;
+    private DateTime _lastSweepTime = DateTime.MinValue;
+    private static readonly TimeSpan SweepCooldown = TimeSpan.FromMinutes(1);
 
     public RedisDeviceAuthService(
         ILogger<RedisDeviceAuthService> logger,
@@ -314,9 +316,11 @@ public class RedisDeviceAuthService : IDeviceAuthService
         }
 
         // Sweep stale request histories for devices no longer active.
-        // Prevents unbounded memory growth during prolonged Redis outages.
-        if (_fallbackRequestHistory.Count > _fallbackDevices.Count * 2)
+        // Cooldown prevents O(N) iteration on every request when entries haven't expired.
+        if (_fallbackRequestHistory.Count > _fallbackDevices.Count * 2
+            && (DateTime.UtcNow - _lastSweepTime) > SweepCooldown)
         {
+            _lastSweepTime = DateTime.UtcNow;
             foreach (var key in _fallbackRequestHistory.Keys)
             {
                 if (!_fallbackDevices.ContainsKey(key) &&

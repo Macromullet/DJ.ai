@@ -5,6 +5,7 @@ import { YouTubeMusicProvider } from '../providers/YouTubeMusicProvider';
 import { SpotifyProvider } from '../providers/SpotifyProvider';
 import { AppleMusicProvider } from '../providers/AppleMusicProvider';
 import { WebSpeechTTSService } from '../services/WebSpeechTTSService';
+import { OpenAITTSService } from '../services/OpenAITTSService';
 import { AICommentaryService } from '../services/AICommentaryService';
 import { container, registerServices } from './container';
 import type { ServiceContainer } from './container';
@@ -43,8 +44,10 @@ export function initializeProductionMode(options: ProductionModeOptions): Servic
       throw new Error(`Unknown provider: ${options.provider}`);
   }
 
-  // Create TTS service (default to Web Speech for now)
-  const ttsService = new WebSpeechTTSService();
+  // Create TTS service based on provider selection
+  const ttsService = options.ttsProvider === 'openai' && options.openaiApiKey
+    ? new OpenAITTSService({ apiKey: options.openaiApiKey })
+    : new WebSpeechTTSService();
 
   // Create AI Commentary service
   const aiCommentaryService = new AICommentaryService({
@@ -63,7 +66,7 @@ export function initializeProductionMode(options: ProductionModeOptions): Servic
   console.log('[PRODUCTION MODE] ✅ Services registered');
   console.log(`[PRODUCTION MODE] ✅ Music provider: ${options.provider}`);
   console.log(`[PRODUCTION MODE] ✅ AI provider: ${options.aiProvider || 'copilot'}`);
-  console.log('[PRODUCTION MODE] ✅ TTS: Web Speech API');
+  console.log(`[PRODUCTION MODE] ✅ TTS: ${options.ttsProvider === 'openai' && options.openaiApiKey ? 'OpenAI' : 'Web Speech API'}`);
   
   return container.getAll() as ServiceContainer;
 }

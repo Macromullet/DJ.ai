@@ -394,6 +394,37 @@ ipcMain.handle('ai-api-request', async (event, { url, method, headers, body }) =
   }
 });
 
+// IPC handler for TTS audio requests (returns base64-encoded binary audio)
+ipcMain.handle('ai-tts-request', async (event, { url, method, headers, body }) => {
+  try {
+    const parsed = new URL(url);
+    if (!AI_API_ALLOWLIST.has(parsed.hostname)) {
+      return { ok: false, status: 403, statusText: 'Forbidden: domain not in allowlist', body: null };
+    }
+    if (parsed.protocol !== 'https:') {
+      return { ok: false, status: 403, statusText: 'Only HTTPS requests are allowed', body: null };
+    }
+
+    const response = await fetch(url, {
+      method: method || 'POST',
+      headers: headers || {},
+      body: body ? JSON.stringify(body) : undefined,
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      return { ok: false, status: response.status, statusText: response.statusText, body: errorText };
+    }
+
+    // Return binary audio as base64
+    const buffer = await response.arrayBuffer();
+    const base64 = Buffer.from(buffer).toString('base64');
+    return { ok: true, status: response.status, statusText: response.statusText, body: base64 };
+  } catch (error) {
+    return { ok: false, status: 0, statusText: error.message, body: null };
+  }
+});
+
 // safeStorage IPC handlers
 ipcMain.handle('safe-storage-available', () => {
   return safeStorage.isEncryptionAvailable();

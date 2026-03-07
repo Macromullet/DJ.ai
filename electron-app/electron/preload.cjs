@@ -24,6 +24,7 @@ contextBridge.exposeInMainWorld('electron', {
   // AI API proxy — routes requests through main process (bypasses CORS)
   aiProxy: {
     request: (options) => ipcRenderer.invoke('ai-api-request', options),
+    ttsRequest: (options) => ipcRenderer.invoke('ai-tts-request', options),
   },
 
   // safeStorage for encrypting API keys at rest

@@ -87,10 +87,12 @@ function MainApp() {
 
   // Refs to avoid stale closures inside YouTube player event handlers
   const autoDJModeRef = useRef(settings.autoDJMode);
+  const ttsEnabledRef = useRef(settings.ttsEnabled);
   const playlistRef = useRef(playlist);
   const currentTrackRef = useRef(currentTrack);
 
   useEffect(() => { autoDJModeRef.current = settings.autoDJMode; }, [settings.autoDJMode]);
+  useEffect(() => { ttsEnabledRef.current = settings.ttsEnabled; }, [settings.ttsEnabled]);
   useEffect(() => { playlistRef.current = playlist; }, [playlist]);
   useEffect(() => { currentTrackRef.current = currentTrack; }, [currentTrack]);
 
@@ -230,11 +232,46 @@ function MainApp() {
     if (event.data === 0) {
       // Track ended — read from refs to get current values
       if (autoDJModeRef.current) {
-        handleNext();
+        handleAutoDJTransition();
       }
     }
     else if (event.data === 1) setIsPlaying(true);
     else if (event.data === 2) setIsPlaying(false);
+  };
+
+  /** Auto-DJ: generate commentary for upcoming track, speak it, then play */
+  const handleAutoDJTransition = async () => {
+    const pl = playlistRef.current;
+    const ct = currentTrackRef.current;
+    if (!pl.length || !ct) { handleNext(); return; }
+
+    const currentIndex = pl.findIndex(t => t.id === ct.id);
+    const nextTrack = currentIndex >= 0 && currentIndex < pl.length - 1
+      ? pl[currentIndex + 1] : null;
+    if (!nextTrack) { handleNext(); return; }
+
+    // Generate commentary with 3s timeout
+    let announcement = `Coming up next: ${nextTrack.name} by ${nextTrack.artist}`;
+    if (container.has('aiCommentaryService')) {
+      const aiService = getAICommentaryService();
+      if (aiService) {
+        try {
+          const result = await Promise.race([
+            aiService.generateCommentary(nextTrack.name, nextTrack.artist, nextTrack.album),
+            new Promise<null>(r => setTimeout(() => r(null), 3000)),
+          ]);
+          if (result) announcement = result.text;
+        } catch { /* use fallback */ }
+      }
+    }
+    setDjCommentary(announcement);
+
+    // Speak before starting the next track (use ref to avoid stale closure)
+    if (ttsEnabledRef.current && container.has('ttsService')) {
+      try { await getTTSService().speak(announcement); } catch { /* continue */ }
+    }
+
+    handlePlayTrack(nextTrack);
   };
 
   const handleSearch = async () => {

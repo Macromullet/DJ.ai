@@ -30,6 +30,7 @@ interface ElectronBridge {
   openOAuthWindow: (options: unknown) => Promise<unknown>;
   aiProxy: {
     request: (options: AiProxyRequestOptions) => Promise<AiProxyResponse>;
+    ttsRequest: (options: AiProxyRequestOptions) => Promise<AiProxyResponse>;
   };
   safeStorage: {
     isAvailable: () => Promise<boolean>;

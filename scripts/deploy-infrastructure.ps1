@@ -126,6 +126,8 @@ if ($ValidateOnly) {
 if (-not $SkipProvision) {
     Write-Host "`n[3/4] Provisioning infrastructure..." -ForegroundColor Yellow
 
+    $deploymentName = "djai-$Environment-$(Get-Date -Format 'yyyyMMdd-HHmmss')"
+
     $deployParams = @(
         'deployment', 'group', 'create',
         '--resource-group', $resourceGroup,
@@ -133,7 +135,7 @@ if (-not $SkipProvision) {
         '--parameters', "environmentName=$Environment",
         '--parameters', "allowedRedirectHosts=$AllowedRedirectHosts",
         '--parameters', "enableNetworkIsolation=$($EnableNetworkIsolation.IsPresent.ToString().ToLower())",
-        '--name', "djai-$Environment-$(Get-Date -Format 'yyyyMMdd-HHmmss')",
+        '--name', $deploymentName,
         '--mode', 'Incremental',
         '--verbose'
     )
@@ -153,12 +155,12 @@ Write-Host "`n[4/4] Deploying application..." -ForegroundColor Yellow
 # Get function app name from deployment outputs
 $outputs = az deployment group show `
     --resource-group $resourceGroup `
-    --name (az deployment group list --resource-group $resourceGroup --query '[0].name' -o tsv) `
+    --name $deploymentName `
     --query 'properties.outputs' -o json 2>&1 | ConvertFrom-Json
 
 $funcAppName = $outputs.AZURE_FUNCTION_APP_NAME.value
 if (-not $funcAppName) {
-    Write-Error "Could not determine Function App name from deployment outputs. Check that main.bicep outputs 'functionAppName'."
+    Write-Error "Could not determine Function App name from deployment outputs. Check that main.bicep outputs 'AZURE_FUNCTION_APP_NAME'."
 }
 
 Write-Host "  Publishing to $funcAppName..." -ForegroundColor Gray

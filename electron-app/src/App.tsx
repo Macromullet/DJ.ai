@@ -330,9 +330,10 @@ function MainApp() {
       const results = await provider.searchTracks(searchQuery, 10);
       setSearchResults(results);
       setDjCommentary(`Found ${results.length} results for "${searchQuery}"`);
-    } catch (error: any) {
-      setDjCommentary(`Search error: ${error.message}`);
-      showToast('Search failed: ' + error.message, 'error');
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      setDjCommentary(`Search error: ${message}`);
+      showToast('Search failed: ' + message, 'error');
       setSearchResults([]);
     }
   };

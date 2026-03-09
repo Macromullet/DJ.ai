@@ -1,0 +1,23 @@
+/* OAuthCallback.css */
+
+.oauth-callback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  background: var(--color-bg-overlay);
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.oauth-callback--error {
+  color: var(--color-error);
+}
+
+.oauth-callback--loading {
+  color: var(--color-primary);
+}
+
+.oauth-callback__icon {
+  font-size: 48px;
+}

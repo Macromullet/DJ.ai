@@ -113,7 +113,7 @@ export const MusicProviderStep: React.FC<MusicProviderStepProps> = ({
               ) : (
                 <button
                   onClick={() => handleConnect(info.id)}
-                  disabled={isConnecting}
+                  disabled={connecting !== null}
                   className="mp-connect-btn"
                 >
                   {isConnecting ? (

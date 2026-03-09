@@ -123,6 +123,7 @@ export class AppleMusicProvider implements IMusicProvider {
     } catch (error) {
       console.error('Error configuring MusicKit:', error);
       this.isAuthenticated = false;
+      this.clearAuth();
     }
   }
 

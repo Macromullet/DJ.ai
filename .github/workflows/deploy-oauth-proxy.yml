@@ -90,22 +90,25 @@ jobs:
         run: az bicep build --file infra/main.bicep --stdout > /dev/null
 
       - name: Provision infrastructure
+        id: provision
         run: |
+          DEPLOY_NAME="djai-${{ env.ENVIRONMENT }}-$(date +%Y%m%d-%H%M%S)"
           az deployment group create \
             --resource-group ${{ env.RESOURCE_GROUP }} \
             --template-file infra/main.bicep \
             --parameters environmentName=${{ env.ENVIRONMENT }} \
             --parameters "allowedRedirectHosts=${{ vars.ALLOWED_REDIRECT_HOSTS || '' }}" \
             --parameters enableNetworkIsolation=${{ env.ENABLE_NETWORK_ISOLATION }} \
-            --name "djai-${{ env.ENVIRONMENT }}-$(date +%Y%m%d-%H%M%S)" \
+            --name "$DEPLOY_NAME" \
             --mode Incremental
+          echo "deploy_name=$DEPLOY_NAME" >> "$GITHUB_OUTPUT"
 
       - name: Get Function App name
         id: get-app
         run: |
           APP_NAME=$(az deployment group show \
             --resource-group ${{ env.RESOURCE_GROUP }} \
-            --name "$(az deployment group list --resource-group ${{ env.RESOURCE_GROUP }} --query '[0].name' -o tsv)" \
+            --name "${{ steps.provision.outputs.deploy_name }}" \
             --query 'properties.outputs.AZURE_FUNCTION_APP_NAME.value' -o tsv)
           echo "app_name=$APP_NAME" >> "$GITHUB_OUTPUT"
 
@@ -120,7 +123,7 @@ jobs:
 
       - name: Deploy application
         run: |
-          cd oauth-proxy
+          cd publish
           func azure functionapp publish ${{ steps.get-app.outputs.app_name }} --dotnet-isolated
 
   deploy-production:
@@ -144,22 +147,25 @@ jobs:
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
       - name: Provision infrastructure
+        id: provision
         run: |
+          DEPLOY_NAME="djai-${{ env.ENVIRONMENT }}-$(date +%Y%m%d-%H%M%S)"
           az deployment group create \
             --resource-group ${{ env.RESOURCE_GROUP }} \
             --template-file infra/main.bicep \
             --parameters environmentName=${{ env.ENVIRONMENT }} \
             --parameters "allowedRedirectHosts=${{ vars.ALLOWED_REDIRECT_HOSTS || '' }}" \
             --parameters enableNetworkIsolation=${{ env.ENABLE_NETWORK_ISOLATION }} \
-            --name "djai-${{ env.ENVIRONMENT }}-$(date +%Y%m%d-%H%M%S)" \
+            --name "$DEPLOY_NAME" \
             --mode Incremental
+          echo "deploy_name=$DEPLOY_NAME" >> "$GITHUB_OUTPUT"
 
       - name: Get Function App name
         id: get-app
         run: |
           APP_NAME=$(az deployment group show \
             --resource-group ${{ env.RESOURCE_GROUP }} \
-            --name "$(az deployment group list --resource-group ${{ env.RESOURCE_GROUP }} --query '[0].name' -o tsv)" \
+            --name "${{ steps.provision.outputs.deploy_name }}" \
             --query 'properties.outputs.AZURE_FUNCTION_APP_NAME.value' -o tsv)
           echo "app_name=$APP_NAME" >> "$GITHUB_OUTPUT"
 
@@ -174,5 +180,5 @@ jobs:
 
       - name: Deploy application
         run: |
-          cd oauth-proxy
+          cd publish
           func azure functionapp publish ${{ steps.get-app.outputs.app_name }} --dotnet-isolated

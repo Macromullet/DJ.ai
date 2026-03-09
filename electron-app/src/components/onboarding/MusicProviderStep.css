@@ -134,7 +134,7 @@
 
 .mp-error {
   font-size: var(--text-sm);
-  color: var(--color-error, #ff4444);
+  color: var(--color-error);
   margin: 0;
   font-weight: var(--weight-medium);
   text-align: center;

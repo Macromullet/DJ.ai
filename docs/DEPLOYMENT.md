@@ -1,37 +1,123 @@
 # Deploying DJ.ai to Azure
 
-Infrastructure is defined as **Bicep** in `infra/` and deployed via **Azure Developer CLI (`azd`)** or **GitHub Actions**.
+Infrastructure is defined as **Bicep** in `infra/` and deployed via the **`scripts\deploy-infrastructure.ps1`** script (uses `az` CLI directly — no `azd` required). GitHub Actions CI/CD is also available.
+
+> **Note:** All JSON parameter files have been removed from `infra/`. Bicep source is the single source of truth (`infra/**/*.json` is gitignored).
 
 ## Prerequisites
 
 - Azure subscription
-- [Azure Developer CLI (`azd`)](https://learn.microsoft.com/azure/developer/azure-developer-cli/install-azd)
+- [Azure CLI (`az`)](https://learn.microsoft.com/cli/azure/install-azure-cli)
 - .NET 8 SDK
+- [Azure Functions Core Tools v4](https://learn.microsoft.com/azure/azure-functions/functions-run-tools?tabs=v4) (`npm i -g azure-functions-core-tools@4`)
+
+### Deployer Permissions
+
+The identity running the deploy (your user account or a CI service principal) needs these roles on the target resource group:
+
+| Role | Why |
+|------|-----|
+| **Contributor** | Create and update all Azure resources |
+| **User Access Administrator** | Create Managed Identity role assignments (Storage, Key Vault) |
+
+Without **User Access Administrator**, the `storageAccess` and `keyVaultAccess` Bicep modules will fail at deploy time.
+
+## Resource Group Convention
+
+Resource groups follow the pattern **`rg-djai-{environment}`**:
+
+| Environment | Resource Group |
+|-------------|----------------|
+| dev | `rg-djai-dev` |
+| staging | `rg-djai-staging` |
+| prod | `rg-djai-prod` |
+
+Resource groups must be **pre-created** before running the deploy script:
+
+```bash
+az group create --name rg-djai-dev --location eastus2
+```
 
 ## Quick Deploy (Manual)
 
-```bash
+```powershell
 # 1. Login
-azd auth login
+az login
 
-# 2. Provision infrastructure + deploy code
-azd up
+# 2. Create resource group (first time only)
+az group create --name rg-djai-dev --location eastus2
+
+# 3. Deploy infrastructure + publish app
+.\scripts\deploy-infrastructure.ps1 -Environment dev
+
+# Or validate Bicep only (no deploy)
+.\scripts\deploy-infrastructure.ps1 -ValidateOnly
+
+# Or skip provisioning and just publish app code
+.\scripts\deploy-infrastructure.ps1 -SkipProvision
+
+# Deploy to staging/prod
+.\scripts\deploy-infrastructure.ps1 -Environment staging
+.\scripts\deploy-infrastructure.ps1 -Environment prod
 ```
 
-That's it. `azd up` reads `azure.yaml`, provisions all Bicep resources (Function App, Key Vault, Redis, App Insights, Storage), and deploys the OAuth proxy.
+The script validates all Bicep templates, runs `az deployment group create`, builds and publishes the Azure Functions app, and outputs the endpoint URL.
 
 ### What Gets Created
 
-| Resource | Purpose |
-|----------|---------|
-| Azure Functions | OAuth proxy endpoints |
-| Azure Key Vault | OAuth client secrets |
-| Azure Cache for Redis | OAuth state, device registry, rate limiting |
-| Application Insights | Telemetry and logging |
-| Log Analytics Workspace | Log aggregation |
-| Storage Account | Functions runtime storage |
+| Resource | Purpose | Security |
+|----------|---------|----------|
+| VNet (`10.0.0.0/16`) | Network isolation | Two subnets (functions + private endpoints) |
+| Azure Functions | OAuth proxy endpoints | VNet-integrated, HTTP/2, MI-only auth |
+| Azure Key Vault | OAuth client secrets | RBAC-enabled, purge protection, private endpoint |
+| Azure Cache for Redis (C1 Standard) | OAuth state, device registry, rate limiting | AAD auth, private endpoint |
+| Application Insights | Telemetry and logging | Local auth disabled |
+| Log Analytics Workspace | Log aggregation | — |
+| Storage Account | Functions runtime storage | No shared keys, no public access, private endpoints |
+| Private DNS Zones | Name resolution for private endpoints | Blob, queue, table, vault, Redis |
+| Role Assignments | MI permissions (scripted in Bicep) | Blob Data Owner, Account Contributor, Queue Data Contributor |
 
 See `infra/README.md` and `infra/main.bicep` for full infrastructure details.
+
+## Infrastructure Security
+
+All Azure resources are hardened with **zero public data-plane access** and **Managed Identity** authentication:
+
+### Network Isolation
+
+```
+VNet (10.0.0.0/16)
+├── snet-functions (10.0.1.0/24)
+│   └── Function App (VNet-integrated, delegated to Microsoft.Web/serverFarms)
+└── snet-private-endpoints (10.0.2.0/24)
+    ├── PE → Storage Account (blob)
+    ├── PE → Storage Account (queue)
+    ├── PE → Storage Account (table)
+    ├── PE → Key Vault
+    └── PE → Redis Cache
+```
+
+All data-plane traffic between the Function App and backing services flows through **private endpoints** over the VNet. Public network access is **disabled** on every data resource.
+
+### Managed Identity (No Shared Keys)
+
+The Function App uses a **system-assigned Managed Identity** for all service-to-service auth. No connection strings with keys, no shared access keys, no local auth.
+
+| Target Resource | Role Assignment(s) | Assigned To |
+|-----------------|---------------------|-------------|
+| Storage Account | Storage Blob Data Owner, Storage Account Contributor, Storage Queue Data Contributor | Function App MI |
+| Key Vault | Key Vault Secrets User | Function App MI |
+| Redis | (AAD auth via PE) | Function App MI |
+
+### Resource-Level Hardening
+
+| Resource | Settings |
+|----------|----------|
+| **Storage** | `allowSharedKeyAccess: false`, `allowBlobPublicAccess: false`, `publicNetworkAccess: Disabled` |
+| **Key Vault** | RBAC authorization, purge protection enabled, `publicNetworkAccess: Disabled` |
+| **Redis** | C1 Standard (required for AAD auth + PE support), `publicNetworkAccess: Disabled` |
+| **App Insights** | `disableLocalAuth: true` |
+| **Function App** | VNet-integrated, HTTP/2, remote debugging disabled, `WEBSITE_RUN_FROM_PACKAGE=1` |
 
 ## GitHub Actions Pipelines
 
@@ -41,10 +127,12 @@ Triggers on push to `main` when `oauth-proxy/` or `infra/` files change.
 
 **Pipeline:**
 1. **Build & Test** — `dotnet build`, `dotnet publish`
-2. **Deploy to Staging** — `azd provision` + `azd deploy` (automatic)
+2. **Deploy to Staging** — `az deployment group create` + `func azure functionapp publish` (automatic)
 3. **Deploy to Production** — Same, but requires **manual approval** in the GitHub `production` environment
 
 Can also be triggered manually via `workflow_dispatch`.
+
+> **Note:** The pipeline uses `az` CLI directly (matching `scripts\deploy-infrastructure.ps1`), not `azd`.
 
 ### Electron Release (`release-electron.yml`)
 
@@ -140,14 +228,19 @@ credentials from Step 2 are bound to these environment names.
 
 #### Step 4: Grant Permissions
 
-These role assignments are subscription-wide, so they cover both staging and
-production resource groups:
+The service principal needs both **Contributor** (to create resources) and **User Access Administrator** (to create Managed Identity role assignments) on each resource group:
 
 ```bash
-# Contributor role on the subscription (needed by azd to create resources)
+# Contributor role (create/update resources)
 az role assignment create \
   --assignee <appId> \
   --role Contributor \
+  --scope /subscriptions/<subscription-id>
+
+# User Access Administrator (create MI role assignments — required for Bicep RBAC modules)
+az role assignment create \
+  --assignee <appId> \
+  --role "User Access Administrator" \
   --scope /subscriptions/<subscription-id>
 
 # Key Vault access (if not using Azure RBAC for Key Vault)
@@ -157,9 +250,8 @@ az role assignment create \
   --scope /subscriptions/<subscription-id>
 ```
 
-> **Tighter scoping (optional):** If you prefer least-privilege, create the resource
-> groups first (`az group create -n rg-staging ...` / `az group create -n rg-production ...`)
-> and scope the role assignments to each RG instead of the subscription.
+> **Tighter scoping (optional):** Scope role assignments to individual resource groups
+> (`rg-djai-dev`, `rg-djai-staging`, `rg-djai-prod`) instead of the subscription.
 
 #### Step 5: Set GitHub Secrets
 
@@ -182,15 +274,16 @@ Same page, switch to the **Variables** tab:
 
 ### Resource Group Separation
 
-`azd` creates **separate resource groups per environment** automatically:
+Each environment gets its own isolated resource group following the `rg-djai-{environment}` convention:
 
 | Environment | Resource Group | Trigger | Resources |
 |-------------|----------------|---------|-----------|
-| Staging | `rg-staging` | Push to `main` (oauth-proxy/infra changes) | Function App, Key Vault, Redis |
-| Production | `rg-production` | Manual workflow dispatch + approval | Function App, Key Vault, Redis |
+| Dev | `rg-djai-dev` | Manual (`deploy-infrastructure.ps1`) | Full stack (VNet, Function App, Key Vault, Redis, Storage, PEs) |
+| Staging | `rg-djai-staging` | Push to `main` (oauth-proxy/infra changes) | Full stack |
+| Production | `rg-djai-prod` | Manual workflow dispatch + approval | Full stack |
 
 Each environment gets its own isolated set of resources — there is no sharing
-between staging and production.
+between environments.
 
 ### Code Signing Secrets (Optional)
 
@@ -241,16 +334,30 @@ This is handled automatically by the release pipeline via the `PRODUCTION_OAUTH_
 |----------|-------------|
 | Azure Functions (Consumption) | $0–5 |
 | Key Vault | < $1 |
-| Redis (Basic C0) | ~$15 |
+| Redis (Standard C1) | ~$43 |
 | Storage Account | < $1 |
 | App Insights | Free tier |
-| **Total** | **~$17–22** |
+| VNet / Private Endpoints | < $10 |
+| **Total** | **~$55–60** |
+
+> **Note:** Redis was upgraded from Basic C0 (~$15/mo) to Standard C1 (~$43/mo) to
+> support AAD authentication and private endpoints. This is required for the
+> zero-public-access security model.
 
 ## Cleanup
 
 ```bash
-azd down --purge  # Delete all Azure resources
+# Delete all Azure resources for an environment
+az group delete --name rg-djai-dev --no-wait --yes
+
+# Or for other environments
+az group delete --name rg-djai-staging --no-wait --yes
+az group delete --name rg-djai-prod --no-wait --yes
 ```
+
+> **Note:** Key Vault has purge protection enabled (90-day retention). After deleting
+> the resource group, the Key Vault enters a soft-deleted state. To fully reclaim the
+> name, run: `az keyvault purge --name <kv-name>`
 
 ## Troubleshooting
 

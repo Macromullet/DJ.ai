@@ -47,10 +47,11 @@ See [DEV_SETUP.md](DEV_SETUP.md) for complete setup instructions.
 
 **Electron App** → React 18 + TypeScript + Vite  
 **OAuth Proxy** → .NET 8 Azure Functions + Key Vault + Redis  
-**Orchestration** → .NET Aspire (dev), Bicep + `azd` (prod)  
+**Orchestration** → .NET Aspire (dev), Bicep + `az` CLI (prod)  
 **CI/CD** → GitHub Actions (build, deploy, release)  
 **AI** → GitHub Copilot API + OpenAI API  
-**Music** → Spotify Web API, Apple Music API
+**Music** → Spotify Web API, Apple Music API  
+**Security** → VNet + private endpoints, Managed Identity (no shared keys), zero public data-plane access
 
 The OAuth proxy handles **only** token exchange — all music API calls go directly from the Electron app to providers. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for details.
 
@@ -60,15 +61,15 @@ The OAuth proxy handles **only** token exchange — all music API calls go direc
 |----------|-------------|
 | [DEV_SETUP.md](DEV_SETUP.md) | Local development setup |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | System architecture and design decisions |
-| [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) | Deploy to Azure with `azd` |
+| [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) | Deploy to Azure with `az` CLI |
 | [docs/RELEASING.md](docs/RELEASING.md) | Release process (backend + Electron) |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | How to contribute |
 
 ## 🎯 Current Status
 
 ✅ **Working:** Spotify, Apple Music providers, OAuth flow, Aspire dev environment  
-✅ **Deployed:** GitHub Actions CI/CD, Bicep infrastructure, `azd` deployment  
-✅ **Secured:** CSP, safeStorage, `djai://` protocol, Redis-backed rate limiting  
+✅ **Deployed:** GitHub Actions CI/CD, Bicep infrastructure, `az` CLI deployment  
+✅ **Secured:** VNet + private endpoints, MI-only auth, CSP, safeStorage, `djai://` protocol, Redis-backed rate limiting  
 🚧 **In Progress:** AI commentary, TTS narration  
 📋 **Planned:** GPU visualizations, Playlist management
 

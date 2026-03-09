@@ -235,7 +235,7 @@ Electron App        Music Provider API
 - **Client secrets** — Stored in Azure Key Vault, never exposed to client
 - **Managed Identity** — Function App authenticates to all backing services without credentials
 - **Zero public access** — All data-plane traffic flows through private endpoints over VNet
-- **No shared keys** — Storage, Key Vault, and Redis use MI/AAD auth exclusively
+- **No shared keys (Storage & Key Vault)** — Storage and Key Vault use MI/AAD auth exclusively; Redis currently uses access-key auth (TODO: migrate to MI/AAD when supported by the Aspire integration)
 - **Device tokens** — GUID per client for rate limiting (not cryptographic auth)
 - **Rate limiting** — 1000 req/day, 100 req/hour per device (Redis-backed)
 - **State validation** — CSRF protection on OAuth flows (Redis-backed)
@@ -254,7 +254,7 @@ VNet (10.0.0.0/16)
 │   └── Function App (VNet-integrated)
 │       ├── HTTP/2 enabled
 │       ├── Remote debugging disabled
-│       ├── WEBSITE_RUN_FROM_PACKAGE=1
+│       ├── Flex Consumption deployment (blob container with MI auth)
 │       └── System-assigned Managed Identity
 │
 └── snet-private-endpoints (10.0.2.0/24)
@@ -271,7 +271,7 @@ All inter-resource auth uses the Function App's system-assigned Managed Identity
 
 | Target | Bicep Module | Roles |
 |--------|-------------|-------|
-| Storage Account | `storage-access.bicep` | Storage Blob Data Owner, Storage Account Contributor, Storage Queue Data Contributor |
+| Storage Account | `storage-access.bicep` | Storage Blob Data Owner, Storage Account Contributor, Storage Queue Data Contributor, Storage Table Data Contributor |
 | Key Vault | `key-vault-access.bicep` | Key Vault Secrets User |
 
 ### Resource Hardening Summary
@@ -280,7 +280,7 @@ All inter-resource auth uses the Function App's system-assigned Managed Identity
 |----------|-----------------------|------------|------------|
 | **Storage Account** | Disabled | MI only (`allowSharedKeyAccess: false`) | `allowBlobPublicAccess: false` |
 | **Key Vault** | Disabled | Azure RBAC (no access policies) | Purge protection enabled |
-| **Redis** | Disabled | AAD auth via private endpoint | C1 Standard (required for AAD + PE) |
+| **Redis** | Disabled | Access-key auth via private endpoint | C1 Standard (required for PE support) |
 | **App Insights** | — | `disableLocalAuth: true` | Workspace-based (Log Analytics) |
 | **Function App** | Public (HTTPS only) | MI for backend services | VNet-integrated, HTTP/2 |
 
@@ -319,7 +319,7 @@ Azure (provisioned by infra/main.bicep → scripts\deploy-infrastructure.ps1)
 ├── Azure Cache for Redis C1 Standard (state — publicNetworkAccess: Disabled)
 ├── Storage Account (Functions runtime — publicNetworkAccess: Disabled)
 ├── Application Insights + Log Analytics (disableLocalAuth: true)
-└── Role Assignments (Bicep-managed: Blob Data Owner, Account Contributor, Queue Data Contributor)
+└── Role Assignments (Bicep-managed: Blob Data Owner, Account Contributor, Queue Data Contributor, Table Data Contributor)
 
 User Machine
 └── Electron App (distributed via GitHub Releases)

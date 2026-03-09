@@ -70,12 +70,12 @@ The script validates all Bicep templates, runs `az deployment group create`, bui
 | VNet (`10.0.0.0/16`) | Network isolation | Two subnets (functions + private endpoints) |
 | Azure Functions | OAuth proxy endpoints | VNet-integrated, HTTP/2, MI-only auth |
 | Azure Key Vault | OAuth client secrets | RBAC-enabled, purge protection, private endpoint |
-| Azure Cache for Redis (C1 Standard) | OAuth state, device registry, rate limiting | AAD auth, private endpoint |
+| Azure Cache for Redis (C1 Standard) | OAuth state, device registry, rate limiting | Access-key auth, private endpoint |
 | Application Insights | Telemetry and logging | Local auth disabled |
 | Log Analytics Workspace | Log aggregation | — |
 | Storage Account | Functions runtime storage | No shared keys, no public access, private endpoints |
 | Private DNS Zones | Name resolution for private endpoints | Blob, queue, table, vault, Redis |
-| Role Assignments | MI permissions (scripted in Bicep) | Blob Data Owner, Account Contributor, Queue Data Contributor |
+| Role Assignments | MI permissions (scripted in Bicep) | Blob Data Owner, Account Contributor, Queue Data Contributor, Table Data Contributor |
 
 See `infra/README.md` and `infra/main.bicep` for full infrastructure details.
 
@@ -101,13 +101,13 @@ All data-plane traffic between the Function App and backing services flows throu
 
 ### Managed Identity (No Shared Keys)
 
-The Function App uses a **system-assigned Managed Identity** for all service-to-service auth. No connection strings with keys, no shared access keys, no local auth.
+The Function App uses a **system-assigned Managed Identity** for Storage and Key Vault auth. Redis currently uses access-key connection strings (TODO: migrate to MI/AAD auth when supported by the Aspire integration).
 
 | Target Resource | Role Assignment(s) | Assigned To |
 |-----------------|---------------------|-------------|
-| Storage Account | Storage Blob Data Owner, Storage Account Contributor, Storage Queue Data Contributor | Function App MI |
+| Storage Account | Storage Blob Data Owner, Storage Account Contributor, Storage Queue Data Contributor, Storage Table Data Contributor | Function App MI |
 | Key Vault | Key Vault Secrets User | Function App MI |
-| Redis | (AAD auth via PE) | Function App MI |
+| Redis | (access-key connection string via PE) | — |
 
 ### Resource-Level Hardening
 
@@ -115,9 +115,9 @@ The Function App uses a **system-assigned Managed Identity** for all service-to-
 |----------|----------|
 | **Storage** | `allowSharedKeyAccess: false`, `allowBlobPublicAccess: false`, `publicNetworkAccess: Disabled` |
 | **Key Vault** | RBAC authorization, purge protection enabled, `publicNetworkAccess: Disabled` |
-| **Redis** | C1 Standard (required for AAD auth + PE support), `publicNetworkAccess: Disabled` |
+| **Redis** | C1 Standard (required for PE support), access-key auth, `publicNetworkAccess: Disabled` |
 | **App Insights** | `disableLocalAuth: true` |
-| **Function App** | VNet-integrated, HTTP/2, remote debugging disabled, `WEBSITE_RUN_FROM_PACKAGE=1` |
+| **Function App** | VNet-integrated, HTTP/2, remote debugging disabled, Flex Consumption deployment via `functionAppConfig.deployment.storage` (blob container with MI auth) |
 
 ## GitHub Actions Pipelines
 
@@ -199,7 +199,7 @@ need a federated credential for each:
 az ad app federated-credential create --id <appId> --parameters '{
   "name": "github-staging",
   "issuer": "https://token.actions.githubusercontent.com",
-  "subject": "repo:Macromullet/DJ.ai:environment:staging",
+  "subject": "repo:<owner>/<repo>:environment:staging",
   "audiences": ["api://AzureADTokenExchange"],
   "description": "Deploy to staging environment"
 }'
@@ -208,11 +208,13 @@ az ad app federated-credential create --id <appId> --parameters '{
 az ad app federated-credential create --id <appId> --parameters '{
   "name": "github-production",
   "issuer": "https://token.actions.githubusercontent.com",
-  "subject": "repo:Macromullet/DJ.ai:environment:production",
+  "subject": "repo:<owner>/<repo>:environment:production",
   "audiences": ["api://AzureADTokenExchange"],
   "description": "Deploy to production environment"
 }'
 ```
+
+> **Note:** Replace `<owner>/<repo>` in the `subject` fields above with your actual GitHub repository (e.g., `myorg/DJ.ai`).
 
 #### Step 3: Create GitHub Environments
 
@@ -220,7 +222,7 @@ Go to repo → **Settings → Environments** and create two environments:
 
 | Environment | Purpose | Configuration |
 |-------------|---------|---------------|
-| `staging` | Auto-deploy on push to main | No approval required |
+| `staging` | Auto-deploy on push to `main` (only when `oauth-proxy/**` or `infra/**` paths change) | No approval required |
 | `production` | Manual deploy via workflow dispatch | Add **required reviewer** for approval gate |
 
 Both environments must exist before the deploy workflow can run — the federated
@@ -228,30 +230,33 @@ credentials from Step 2 are bound to these environment names.
 
 #### Step 4: Grant Permissions
 
-The service principal needs both **Contributor** (to create resources) and **User Access Administrator** (to create Managed Identity role assignments) on each resource group:
+The service principal needs **Contributor** (to create resources), **User Access Administrator** (to create Managed Identity role assignments), and **Key Vault Secrets Officer** (to set secrets during deploy) on each target resource group:
 
 ```bash
-# Contributor role (create/update resources)
+# Look up the service principal's object ID (use this as --assignee, not the appId)
+SP_OBJECT_ID=$(az ad sp show --id <appId> --query id -o tsv)
+
+# Contributor role (create/update resources) — scoped to resource group
 az role assignment create \
-  --assignee <appId> \
+  --assignee "$SP_OBJECT_ID" \
   --role Contributor \
-  --scope /subscriptions/<subscription-id>
+  --scope /subscriptions/<subscription-id>/resourceGroups/rg-djai-dev
 
 # User Access Administrator (create MI role assignments — required for Bicep RBAC modules)
 az role assignment create \
-  --assignee <appId> \
+  --assignee "$SP_OBJECT_ID" \
   --role "User Access Administrator" \
-  --scope /subscriptions/<subscription-id>
+  --scope /subscriptions/<subscription-id>/resourceGroups/rg-djai-dev
 
-# Key Vault access (if not using Azure RBAC for Key Vault)
+# Key Vault Secrets Officer (set secrets during deploy)
 az role assignment create \
-  --assignee <appId> \
+  --assignee "$SP_OBJECT_ID" \
   --role "Key Vault Secrets Officer" \
-  --scope /subscriptions/<subscription-id>
+  --scope /subscriptions/<subscription-id>/resourceGroups/rg-djai-dev
 ```
 
-> **Tighter scoping (optional):** Scope role assignments to individual resource groups
-> (`rg-djai-dev`, `rg-djai-staging`, `rg-djai-prod`) instead of the subscription.
+> **Repeat for each environment:** Replace `rg-djai-dev` with `rg-djai-staging` and
+> `rg-djai-prod` to grant access to all environments.
 
 #### Step 5: Set GitHub Secrets
 
@@ -271,6 +276,7 @@ Same page, switch to the **Variables** tab:
 |----------|-------------|
 | `AZURE_LOCATION` | Azure region (default: `eastus2`) |
 | `PRODUCTION_OAUTH_PROXY_URL` | Production OAuth proxy URL (for Electron builds) |
+| `ALLOWED_REDIRECT_HOSTS` | Comma-separated list of allowed OAuth redirect hostnames (e.g., `localhost`) |
 
 ### Resource Group Separation
 
@@ -341,8 +347,8 @@ This is handled automatically by the release pipeline via the `PRODUCTION_OAUTH_
 | **Total** | **~$55–60** |
 
 > **Note:** Redis was upgraded from Basic C0 (~$15/mo) to Standard C1 (~$43/mo) to
-> support AAD authentication and private endpoints. This is required for the
-> zero-public-access security model.
+> support private endpoints (and future AAD authentication). This is required for the
+> zero-public-access security model. Redis currently uses access-key auth (TODO: migrate to MI/AAD).
 
 ## Cleanup
 
@@ -355,7 +361,7 @@ az group delete --name rg-djai-staging --no-wait --yes
 az group delete --name rg-djai-prod --no-wait --yes
 ```
 
-> **Note:** Key Vault has purge protection enabled (90-day retention). After deleting
+> **Note:** Key Vault has purge protection enabled (7-day soft-delete retention). After deleting
 > the resource group, the Key Vault enters a soft-deleted state. To fully reclaim the
 > name, run: `az keyvault purge --name <kv-name>`
 

@@ -37,23 +37,19 @@ var tags = {
 var deploymentContainerName = 'app-package-${take('func-djai-${resourceToken}', 32)}-${take(uniqueString('func-djai', resourceGroup().id), 7)}'
 
 // ---------------------------------------------------------------------------
-// Networking — VNet, Private DNS Zones (network isolation only)
+// Networking — VNet, Private DNS Zones, Private Endpoints (network isolation only)
+// All networking resources consolidated into one module to avoid BCP318 warnings.
 // ---------------------------------------------------------------------------
 
-module vnet 'modules/vnet.bicep' = if (enableNetworkIsolation) {
-  name: 'vnet'
+module networkIsolation 'modules/network-isolation.bicep' = if (enableNetworkIsolation) {
+  name: 'network-isolation'
   params: {
-    name: 'vnet-${resourceToken}'
+    resourceToken: resourceToken
     location: location
     tags: tags
-  }
-}
-
-module dnsZones 'modules/private-dns-zones.bicep' = if (enableNetworkIsolation) {
-  name: 'private-dns-zones'
-  params: {
-    vnetId: vnet.outputs.id
-    tags: tags
+    storageAccountId: storage.outputs.id
+    keyVaultId: keyVault.outputs.id
+    redisId: redis.outputs.id
   }
 }
 
@@ -116,76 +112,6 @@ module keyVault 'modules/key-vault.bicep' = {
 }
 
 // ---------------------------------------------------------------------------
-// Private Endpoints — Storage (blob, queue, table), Key Vault, Redis
-// Only deployed with network isolation (VNet required)
-// ---------------------------------------------------------------------------
-
-module storageBlobPe 'modules/private-endpoint.bicep' = if (enableNetworkIsolation) {
-  name: 'pe-storage-blob'
-  params: {
-    name: 'pe-stblob-${resourceToken}'
-    location: location
-    tags: tags
-    subnetId: vnet.outputs.privateEndpointsSubnetId
-    privateLinkServiceId: storage.outputs.id
-    groupIds: ['blob']
-    privateDnsZoneId: dnsZones.outputs.blobDnsZoneId
-  }
-}
-
-module storageQueuePe 'modules/private-endpoint.bicep' = if (enableNetworkIsolation) {
-  name: 'pe-storage-queue'
-  params: {
-    name: 'pe-stqueue-${resourceToken}'
-    location: location
-    tags: tags
-    subnetId: vnet.outputs.privateEndpointsSubnetId
-    privateLinkServiceId: storage.outputs.id
-    groupIds: ['queue']
-    privateDnsZoneId: dnsZones.outputs.queueDnsZoneId
-  }
-}
-
-module storageTablePe 'modules/private-endpoint.bicep' = if (enableNetworkIsolation) {
-  name: 'pe-storage-table'
-  params: {
-    name: 'pe-sttable-${resourceToken}'
-    location: location
-    tags: tags
-    subnetId: vnet.outputs.privateEndpointsSubnetId
-    privateLinkServiceId: storage.outputs.id
-    groupIds: ['table']
-    privateDnsZoneId: dnsZones.outputs.tableDnsZoneId
-  }
-}
-
-module keyVaultPe 'modules/private-endpoint.bicep' = if (enableNetworkIsolation) {
-  name: 'pe-key-vault'
-  params: {
-    name: 'pe-kv-${resourceToken}'
-    location: location
-    tags: tags
-    subnetId: vnet.outputs.privateEndpointsSubnetId
-    privateLinkServiceId: keyVault.outputs.id
-    groupIds: ['vault']
-    privateDnsZoneId: dnsZones.outputs.keyVaultDnsZoneId
-  }
-}
-
-module redisPe 'modules/private-endpoint.bicep' = if (enableNetworkIsolation) {
-  name: 'pe-redis'
-  params: {
-    name: 'pe-redis-${resourceToken}'
-    location: location
-    tags: tags
-    subnetId: vnet.outputs.privateEndpointsSubnetId
-    privateLinkServiceId: redis.outputs.id
-    groupIds: ['redisCache']
-    privateDnsZoneId: dnsZones.outputs.redisDnsZoneId
-  }
-}
-
-// ---------------------------------------------------------------------------
 // Compute — Azure Functions (OAuth Proxy)
 // ---------------------------------------------------------------------------
 
@@ -203,7 +129,10 @@ module functionApp 'modules/function-app.bicep' = {
     allowedRedirectHosts: allowedRedirectHosts
     allowedRedirectSchemes: 'djai'
     enableNetworkIsolation: enableNetworkIsolation
-    functionsSubnetId: enableNetworkIsolation ? vnet.outputs.functionsSubnetId : ''
+    // Safe: functionsSubnetId is only read when enableNetworkIsolation is true,
+    // which is the same condition that deploys the networkIsolation module.
+    #disable-next-line BCP318
+    functionsSubnetId: enableNetworkIsolation ? networkIsolation.outputs.functionsSubnetId : ''
   }
 }
 
@@ -246,4 +175,5 @@ output AZURE_KEY_VAULT_NAME string = keyVault.outputs.name
 output AZURE_REDIS_NAME string = redis.outputs.name
 
 @description('Name of the VNet (empty when network isolation is disabled)')
-output AZURE_VNET_NAME string = enableNetworkIsolation ? vnet.outputs.name : ''
+#disable-next-line BCP318
+output AZURE_VNET_NAME string = enableNetworkIsolation ? networkIsolation.outputs.vnetName : ''

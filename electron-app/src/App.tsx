@@ -98,6 +98,7 @@ function MainApp() {
   const currentTrackRef = useRef(currentTrack);
   const settingsRef = useRef(settings);
   const playRequestIdRef = useRef(0);
+  const showToastRef = useRef(showToast);
 
   // Look-ahead pre-generation cache for seamless DJ transitions
   const preGenCacheRef = useRef<{
@@ -112,6 +113,7 @@ function MainApp() {
   useEffect(() => { playlistRef.current = playlist; }, [playlist]);
   useEffect(() => { currentTrackRef.current = currentTrack; }, [currentTrack]);
   useEffect(() => { settingsRef.current = settings; }, [settings]);
+  useEffect(() => { showToastRef.current = showToast; }, [showToast]);
 
   // Persist playlist to localStorage
   useEffect(() => {
@@ -273,7 +275,7 @@ function MainApp() {
             } else {
               await ttsService.speak(cached.commentary);
             }
-          } catch { /* continue */ }
+          } catch { /* Auto-DJ TTS: degrade silently to avoid interrupting playback */ }
         }
         preGenCacheRef.current = null;
         handlePlayTrack(nextTrack, { skipCommentary: true });
@@ -292,13 +294,13 @@ function MainApp() {
               new Promise<null>(r => setTimeout(() => r(null), 3000)),
             ]);
             if (result) announcement = result.text;
-          } catch { /* use fallback */ }
+          } catch (e) { console.warn('[Auto-DJ] AI commentary generation failed (using fallback):', e); }
         }
       }
       setDjCommentary(announcement);
 
       if (ttsEnabledRef.current && container.has('ttsService')) {
-        try { await getTTSService().speak(announcement); } catch { /* continue */ }
+        try { await getTTSService().speak(announcement); } catch (e) { console.warn('[Auto-DJ] TTS speak failed (non-fatal):', e); }
       }
 
       handlePlayTrack(nextTrack, { skipCommentary: true });    } finally {
@@ -330,6 +332,7 @@ function MainApp() {
       setDjCommentary(`Found ${results.length} results for "${searchQuery}"`);
     } catch (error: any) {
       setDjCommentary(`Search error: ${error.message}`);
+      showToast('Search failed: ' + error.message, 'error');
       setSearchResults([]);
     }
   };
@@ -482,14 +485,14 @@ function MainApp() {
     const pl = playlistRef.current;
 
     if (playing) {
-      provider?.pause().catch(console.error);
+      provider?.pause().catch(err => { console.error(err); showToastRef.current('Playback control failed', 'error'); });
       setIsPlaying(false);
       window.electron?.tray?.updateInfo({ title: ct?.name || 'DJ.ai', artist: ct?.artist || '', isPlaying: false });
     } else {
       if (!ct && pl.length > 0) {
         handlePlayTrack(pl[0]);
       } else {
-        provider?.play().catch(console.error);
+        provider?.play().catch(err => { console.error(err); showToastRef.current('Playback control failed', 'error'); });
         setIsPlaying(true);
         window.electron?.tray?.updateInfo({ title: ct?.name || 'DJ.ai', artist: ct?.artist || '', isPlaying: true });
       }
@@ -506,7 +509,7 @@ function MainApp() {
         return;
       }
     }
-    providers.current.get(settingsRef.current.currentProvider)?.next().catch(console.error);
+    providers.current.get(settingsRef.current.currentProvider)?.next().catch(err => { console.error(err); showToastRef.current('Playback control failed', 'error'); });
   };
 
   const handlePrevious = () => {
@@ -519,7 +522,7 @@ function MainApp() {
         return;
       }
     }
-    providers.current.get(settingsRef.current.currentProvider)?.previous().catch(console.error);
+    providers.current.get(settingsRef.current.currentProvider)?.previous().catch(err => { console.error(err); showToastRef.current('Playback control failed', 'error'); });
   };
 
   const handleConnectProvider = async (providerName: 'spotify' | 'apple') => {
@@ -593,6 +596,7 @@ function MainApp() {
     } else if (authResult.error) {
       // Show the error message - typically means OAuth not configured
       setDjCommentary(`ℹ️ ${authResult.error}`);
+      showToast(authResult.error, 'error');
       console.log('OAuth not configured. User should use API key method.');
     } else {
       setDjCommentary(`❌ Connection failed`);
@@ -667,6 +671,7 @@ function MainApp() {
           }
         } catch (error) {
           console.error('Error handling deep link:', error);
+          showToast('OAuth authentication failed', 'error');
         }
       };
       window.electron.oauthDeepLink.onCallback(handler);

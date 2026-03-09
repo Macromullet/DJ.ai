@@ -377,6 +377,7 @@ export class SpotifyProvider implements IMusicProvider {
     } catch (error) {
       console.error('Error initializing Spotify player:', error);
       this.isAuthenticated = false;
+      this.clearAuth();
     }
   }
 

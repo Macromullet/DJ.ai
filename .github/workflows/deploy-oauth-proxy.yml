@@ -17,10 +17,21 @@ on:
         options:
           - staging
           - production
+      enable_network_isolation:
+        description: 'Enable VNet + private endpoints'
+        required: false
+        default: 'true'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
 
 permissions:
   id-token: write
   contents: read
+
+env:
+  AZURE_LOCATION: ${{ vars.AZURE_LOCATION || 'eastus2' }}
 
 jobs:
   build:
@@ -43,6 +54,10 @@ jobs:
       - name: Build
         run: dotnet build --no-restore --configuration Release
 
+      - name: Test
+        run: dotnet test --no-build --configuration Release
+        working-directory: oauth-proxy.Tests
+
       - name: Publish
         run: dotnet publish --no-build --configuration Release --output ./publish
 
@@ -57,11 +72,12 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     environment: staging
+    env:
+      ENVIRONMENT: staging
+      RESOURCE_GROUP: rg-djai-staging
+      ENABLE_NETWORK_ISOLATION: ${{ github.event.inputs.enable_network_isolation || 'true' }}
     steps:
       - uses: actions/checkout@v4
-
-      - name: Install azd
-        uses: Azure/setup-azd@v2
 
       - name: Login to Azure
         uses: azure/login@v2
@@ -70,26 +86,42 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      - name: Login azd
-        run: azd auth login --client-id ${{ secrets.AZURE_CLIENT_ID }} --federated-credential-provider github --tenant-id ${{ secrets.AZURE_TENANT_ID }}
-
-      - name: Set azd environment
-        run: |
-          azd env new staging --no-prompt
-          azd env set AZURE_LOCATION ${{ vars.AZURE_LOCATION || 'eastus2' }}
-          # ALLOWED_REDIRECT_HOSTS must be set as a GitHub repository variable for production deployments
-          azd env set ALLOWED_REDIRECT_HOSTS "${{ vars.ALLOWED_REDIRECT_HOSTS || '' }}"
-          azd env set AZURE_SUBSCRIPTION_ID ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      - name: Validate Bicep
+        run: az bicep build --file infra/main.bicep --stdout > /dev/null
 
       - name: Provision infrastructure
-        run: azd provision --no-prompt
-        env:
-          AZURE_ENV_NAME: staging
+        run: |
+          az deployment group create \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --template-file infra/main.bicep \
+            --parameters environmentName=${{ env.ENVIRONMENT }} \
+            --parameters "allowedRedirectHosts=${{ vars.ALLOWED_REDIRECT_HOSTS || '' }}" \
+            --parameters enableNetworkIsolation=${{ env.ENABLE_NETWORK_ISOLATION }} \
+            --name "djai-${{ env.ENVIRONMENT }}-$(date +%Y%m%d-%H%M%S)" \
+            --mode Incremental
+
+      - name: Get Function App name
+        id: get-app
+        run: |
+          APP_NAME=$(az deployment group show \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --name "$(az deployment group list --resource-group ${{ env.RESOURCE_GROUP }} --query '[0].name' -o tsv)" \
+            --query 'properties.outputs.AZURE_FUNCTION_APP_NAME.value' -o tsv)
+          echo "app_name=$APP_NAME" >> "$GITHUB_OUTPUT"
+
+      - name: Download artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: oauth-proxy
+          path: ./publish
+
+      - name: Install Azure Functions Core Tools
+        run: npm install -g azure-functions-core-tools@4 --unsafe-perm true
 
       - name: Deploy application
-        run: azd deploy --no-prompt
-        env:
-          AZURE_ENV_NAME: staging
+        run: |
+          cd oauth-proxy
+          func azure functionapp publish ${{ steps.get-app.outputs.app_name }} --dotnet-isolated
 
   deploy-production:
     name: Deploy to Production
@@ -97,11 +129,12 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event.inputs.environment == 'production'
     environment: production  # Requires approval
+    env:
+      ENVIRONMENT: production
+      RESOURCE_GROUP: rg-djai-prod
+      ENABLE_NETWORK_ISOLATION: 'true'
     steps:
       - uses: actions/checkout@v4
-
-      - name: Install azd
-        uses: Azure/setup-azd@v2
 
       - name: Login to Azure
         uses: azure/login@v2
@@ -110,23 +143,36 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      - name: Login azd
-        run: azd auth login --client-id ${{ secrets.AZURE_CLIENT_ID }} --federated-credential-provider github --tenant-id ${{ secrets.AZURE_TENANT_ID }}
-
-      - name: Set azd environment
-        run: |
-          azd env new production --no-prompt
-          azd env set AZURE_LOCATION ${{ vars.AZURE_LOCATION || 'eastus2' }}
-          # ALLOWED_REDIRECT_HOSTS must be set as a GitHub repository variable for production deployments
-          azd env set ALLOWED_REDIRECT_HOSTS "${{ vars.ALLOWED_REDIRECT_HOSTS || '' }}"
-          azd env set AZURE_SUBSCRIPTION_ID ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-
       - name: Provision infrastructure
-        run: azd provision --no-prompt
-        env:
-          AZURE_ENV_NAME: production
+        run: |
+          az deployment group create \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --template-file infra/main.bicep \
+            --parameters environmentName=${{ env.ENVIRONMENT }} \
+            --parameters "allowedRedirectHosts=${{ vars.ALLOWED_REDIRECT_HOSTS || '' }}" \
+            --parameters enableNetworkIsolation=${{ env.ENABLE_NETWORK_ISOLATION }} \
+            --name "djai-${{ env.ENVIRONMENT }}-$(date +%Y%m%d-%H%M%S)" \
+            --mode Incremental
+
+      - name: Get Function App name
+        id: get-app
+        run: |
+          APP_NAME=$(az deployment group show \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --name "$(az deployment group list --resource-group ${{ env.RESOURCE_GROUP }} --query '[0].name' -o tsv)" \
+            --query 'properties.outputs.AZURE_FUNCTION_APP_NAME.value' -o tsv)
+          echo "app_name=$APP_NAME" >> "$GITHUB_OUTPUT"
+
+      - name: Download artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: oauth-proxy
+          path: ./publish
+
+      - name: Install Azure Functions Core Tools
+        run: npm install -g azure-functions-core-tools@4 --unsafe-perm true
 
       - name: Deploy application
-        run: azd deploy --no-prompt
-        env:
-          AZURE_ENV_NAME: production
+        run: |
+          cd oauth-proxy
+          func azure functionapp publish ${{ steps.get-app.outputs.app_name }} --dotnet-isolated

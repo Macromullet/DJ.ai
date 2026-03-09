@@ -17,8 +17,8 @@ param location string = resourceGroup().location
 @description('Environment name (dev, staging, prod)')
 param environmentName string
 
-@description('Use premium plan with VNet integration and private endpoints. Default false (Flex Consumption/FC1 for dev).')
-param usePremiumPlan bool = false
+@description('Enable network isolation with VNet, private endpoints, and disabled public access. Default false for dev.')
+param enableNetworkIsolation bool = false
 
 @description('Comma-separated list of allowed OAuth redirect hosts for production (e.g., your-app.azurestaticapps.net). Set via: azd env set ALLOWED_REDIRECT_HOSTS <host1,host2>')
 param allowedRedirectHosts string = ''
@@ -37,10 +37,10 @@ var tags = {
 var deploymentContainerName = 'app-package-${take('func-djai-${resourceToken}', 32)}-${take(uniqueString('func-djai', resourceGroup().id), 7)}'
 
 // ---------------------------------------------------------------------------
-// Networking — VNet, Private DNS Zones (premium plan only)
+// Networking — VNet, Private DNS Zones (network isolation only)
 // ---------------------------------------------------------------------------
 
-module vnet 'modules/vnet.bicep' = if (usePremiumPlan) {
+module vnet 'modules/vnet.bicep' = if (enableNetworkIsolation) {
   name: 'vnet'
   params: {
     name: 'vnet-${resourceToken}'
@@ -49,7 +49,7 @@ module vnet 'modules/vnet.bicep' = if (usePremiumPlan) {
   }
 }
 
-module dnsZones 'modules/private-dns-zones.bicep' = if (usePremiumPlan) {
+module dnsZones 'modules/private-dns-zones.bicep' = if (enableNetworkIsolation) {
   name: 'private-dns-zones'
   params: {
     vnetId: vnet.outputs.id
@@ -90,8 +90,8 @@ module storage 'modules/storage.bicep' = {
     name: 'st${resourceToken}'
     location: location
     tags: tags
-    disablePublicAccess: usePremiumPlan
-    deploymentContainerName: !usePremiumPlan ? deploymentContainerName : ''
+    disablePublicAccess: enableNetworkIsolation
+    deploymentContainerName: !enableNetworkIsolation ? deploymentContainerName : ''
   }
 }
 
@@ -101,7 +101,7 @@ module redis 'modules/redis.bicep' = {
     name: 'redis-${resourceToken}'
     location: location
     tags: tags
-    disablePublicAccess: usePremiumPlan
+    disablePublicAccess: enableNetworkIsolation
   }
 }
 
@@ -111,16 +111,16 @@ module keyVault 'modules/key-vault.bicep' = {
     name: 'kv-${resourceToken}'
     location: location
     tags: tags
-    disablePublicAccess: usePremiumPlan
+    disablePublicAccess: enableNetworkIsolation
   }
 }
 
 // ---------------------------------------------------------------------------
 // Private Endpoints — Storage (blob, queue, table), Key Vault, Redis
-// Only deployed with premium plan (VNet required)
+// Only deployed with network isolation (VNet required)
 // ---------------------------------------------------------------------------
 
-module storageBlobPe 'modules/private-endpoint.bicep' = if (usePremiumPlan) {
+module storageBlobPe 'modules/private-endpoint.bicep' = if (enableNetworkIsolation) {
   name: 'pe-storage-blob'
   params: {
     name: 'pe-stblob-${resourceToken}'
@@ -133,7 +133,7 @@ module storageBlobPe 'modules/private-endpoint.bicep' = if (usePremiumPlan) {
   }
 }
 
-module storageQueuePe 'modules/private-endpoint.bicep' = if (usePremiumPlan) {
+module storageQueuePe 'modules/private-endpoint.bicep' = if (enableNetworkIsolation) {
   name: 'pe-storage-queue'
   params: {
     name: 'pe-stqueue-${resourceToken}'
@@ -146,7 +146,7 @@ module storageQueuePe 'modules/private-endpoint.bicep' = if (usePremiumPlan) {
   }
 }
 
-module storageTablePe 'modules/private-endpoint.bicep' = if (usePremiumPlan) {
+module storageTablePe 'modules/private-endpoint.bicep' = if (enableNetworkIsolation) {
   name: 'pe-storage-table'
   params: {
     name: 'pe-sttable-${resourceToken}'
@@ -159,7 +159,7 @@ module storageTablePe 'modules/private-endpoint.bicep' = if (usePremiumPlan) {
   }
 }
 
-module keyVaultPe 'modules/private-endpoint.bicep' = if (usePremiumPlan) {
+module keyVaultPe 'modules/private-endpoint.bicep' = if (enableNetworkIsolation) {
   name: 'pe-key-vault'
   params: {
     name: 'pe-kv-${resourceToken}'
@@ -172,7 +172,7 @@ module keyVaultPe 'modules/private-endpoint.bicep' = if (usePremiumPlan) {
   }
 }
 
-module redisPe 'modules/private-endpoint.bicep' = if (usePremiumPlan) {
+module redisPe 'modules/private-endpoint.bicep' = if (enableNetworkIsolation) {
   name: 'pe-redis'
   params: {
     name: 'pe-redis-${resourceToken}'
@@ -199,11 +199,11 @@ module functionApp 'modules/function-app.bicep' = {
     keyVaultUri: keyVault.outputs.uri
     redisConnectionString: redis.outputs.connectionString
     storageAccountName: storage.outputs.name
-    deploymentContainerName: !usePremiumPlan ? deploymentContainerName : ''
+    deploymentContainerName: !enableNetworkIsolation ? deploymentContainerName : ''
     allowedRedirectHosts: allowedRedirectHosts
     allowedRedirectSchemes: 'djai'
-    usePremiumPlan: usePremiumPlan
-    functionsSubnetId: usePremiumPlan ? vnet.outputs.functionsSubnetId : ''
+    enableNetworkIsolation: enableNetworkIsolation
+    functionsSubnetId: enableNetworkIsolation ? vnet.outputs.functionsSubnetId : ''
   }
 }
 
@@ -245,5 +245,5 @@ output AZURE_KEY_VAULT_NAME string = keyVault.outputs.name
 @description('Name of the Redis cache')
 output AZURE_REDIS_NAME string = redis.outputs.name
 
-@description('Name of the VNet (empty when not using premium plan)')
-output AZURE_VNET_NAME string = usePremiumPlan ? vnet.outputs.name : ''
+@description('Name of the VNet (empty when network isolation is disabled)')
+output AZURE_VNET_NAME string = enableNetworkIsolation ? vnet.outputs.name : ''

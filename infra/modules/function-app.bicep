@@ -32,8 +32,8 @@ param allowedRedirectSchemes string = 'djai'
 @description('Resource ID of the VNet subnet for Function App integration. Empty disables VNet integration.')
 param functionsSubnetId string = ''
 
-@description('Use premium plan with VNet integration. false = Flex Consumption (FC1).')
-param usePremiumPlan bool = false
+@description('Enable network isolation with VNet, private endpoints, and disabled public access. false = Flex Consumption (FC1).')
+param enableNetworkIsolation bool = false
 
 // Storage endpoints for MI-based access
 var storageBlobEndpoint = 'https://${storageAccountName}.blob.${environment().suffixes.storage}'
@@ -60,8 +60,8 @@ resource plan 'Microsoft.Web/serverfarms@2024-04-01' = {
   name: '${name}-plan'
   location: location
   tags: tags
-  kind: usePremiumPlan ? 'elastic' : 'functionapp'
-  sku: usePremiumPlan
+  kind: enableNetworkIsolation ? 'elastic' : 'functionapp'
+  sku: enableNetworkIsolation
     ? { name: 'EP1', tier: 'ElasticPremium' }
     : { name: 'FC1', tier: 'FlexConsumption' }
   properties: {
@@ -78,10 +78,10 @@ resource functionApp 'Microsoft.Web/sites@2024-04-01' = {
   properties: {
     serverFarmId: plan.id
     httpsOnly: true
-    virtualNetworkSubnetId: usePremiumPlan ? functionsSubnetId : null
+    virtualNetworkSubnetId: enableNetworkIsolation ? functionsSubnetId : null
     // Flex Consumption uses functionAppConfig for deployment, scaling, and runtime.
     // Premium uses traditional siteConfig with linuxFxVersion and extension version settings.
-    functionAppConfig: !usePremiumPlan ? {
+    functionAppConfig: !enableNetworkIsolation ? {
       deployment: {
         storage: {
           type: 'blobContainer'
@@ -106,13 +106,13 @@ resource functionApp 'Microsoft.Web/sites@2024-04-01' = {
       http20Enabled: true
       remoteDebuggingEnabled: false
       detailedErrorLoggingEnabled: false
-      vnetRouteAllEnabled: usePremiumPlan
+      vnetRouteAllEnabled: enableNetworkIsolation
       cors: {
         allowedOrigins: [
           'https://*.azurestaticapps.net'
         ]
       }
-      appSettings: usePremiumPlan
+      appSettings: enableNetworkIsolation
         ? concat(commonAppSettings, premiumOnlySettings)
         : commonAppSettings
     }

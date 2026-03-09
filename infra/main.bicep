@@ -17,7 +17,7 @@ param location string = resourceGroup().location
 @description('Environment name (dev, staging, prod)')
 param environmentName string
 
-@description('Use premium plan with VNet integration and private endpoints. Default false (Consumption/Y1 for dev).')
+@description('Use premium plan with VNet integration and private endpoints. Default false (Flex Consumption/FC1 for dev).')
 param usePremiumPlan bool = false
 
 @description('Comma-separated list of allowed OAuth redirect hosts for production (e.g., your-app.azurestaticapps.net). Set via: azd env set ALLOWED_REDIRECT_HOSTS <host1,host2>')
@@ -32,6 +32,9 @@ var tags = {
   'azd-env-name': environmentName
   app: 'djai'
 }
+
+// Flex Consumption deployment container name (deterministic, unique per resource group)
+var deploymentContainerName = 'app-package-${take('func-djai-${resourceToken}', 32)}-${take(uniqueString('func-djai', resourceGroup().id), 7)}'
 
 // ---------------------------------------------------------------------------
 // Networking — VNet, Private DNS Zones (premium plan only)
@@ -88,6 +91,7 @@ module storage 'modules/storage.bicep' = {
     location: location
     tags: tags
     disablePublicAccess: usePremiumPlan
+    deploymentContainerName: !usePremiumPlan ? deploymentContainerName : ''
   }
 }
 
@@ -195,6 +199,7 @@ module functionApp 'modules/function-app.bicep' = {
     keyVaultUri: keyVault.outputs.uri
     redisConnectionString: redis.outputs.connectionString
     storageAccountName: storage.outputs.name
+    deploymentContainerName: !usePremiumPlan ? deploymentContainerName : ''
     allowedRedirectHosts: allowedRedirectHosts
     allowedRedirectSchemes: 'djai'
     usePremiumPlan: usePremiumPlan

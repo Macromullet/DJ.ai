@@ -10,6 +10,9 @@ param tags object
 @description('Disable public network access (requires private endpoints)')
 param disablePublicAccess bool = false
 
+@description('Name of the blob container for Flex Consumption deployment packages. Empty string skips creation.')
+param deploymentContainerName string = ''
+
 resource storage 'Microsoft.Storage/storageAccounts@2023-05-01' = {
   name: name
   location: location
@@ -26,6 +29,20 @@ resource storage 'Microsoft.Storage/storageAccounts@2023-05-01' = {
       defaultAction: disablePublicAccess ? 'Deny' : 'Allow'
       bypass: 'AzureServices'
     }
+  }
+}
+
+// Deployment blob container for Flex Consumption (pre-created so the function app can deploy to it)
+resource blobServices 'Microsoft.Storage/storageAccounts/blobServices@2023-05-01' = if (deploymentContainerName != '') {
+  parent: storage
+  name: 'default'
+}
+
+resource deploymentContainer 'Microsoft.Storage/storageAccounts/blobServices/containers@2023-05-01' = if (deploymentContainerName != '') {
+  parent: blobServices
+  name: deploymentContainerName
+  properties: {
+    publicAccess: 'None'
   }
 }
 

@@ -13,6 +13,9 @@ var storageAccountContributor = '17d1049b-9a84-46fb-8f53-869881c3d3ab'
 // Storage Queue Data Contributor - required for Azure Functions internal queue-based coordination
 var storageQueueDataContributor = '974c5e8b-45b9-4653-ba55-5f855dd0fb88'
 
+// Storage Table Data Contributor - required for Azure Functions distributed locking (when allowSharedKeyAccess is false)
+var storageTableDataContributor = '0a9a7e1f-b9d0-4cc4-a60d-0319b160aaa3'
+
 resource storage 'Microsoft.Storage/storageAccounts@2023-05-01' existing = {
   name: storageAccountName
 }
@@ -45,6 +48,17 @@ resource queueDataContributorRole 'Microsoft.Authorization/roleAssignments@2022-
   scope: storage
   properties: {
     roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', storageQueueDataContributor)
+    principalId: principalId
+    principalType: 'ServicePrincipal'
+  }
+}
+
+@description('Grants Storage Table Data Contributor role to the managed identity')
+resource tableDataContributorRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(storage.id, principalId, storageTableDataContributor)
+  scope: storage
+  properties: {
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', storageTableDataContributor)
     principalId: principalId
     principalType: 'ServicePrincipal'
   }

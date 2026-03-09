@@ -122,6 +122,7 @@ export class AppleMusicProvider implements IMusicProvider {
       console.log('MusicKit configured successfully');
     } catch (error) {
       console.error('Error configuring MusicKit:', error);
+      this.isAuthenticated = false;
     }
   }
 

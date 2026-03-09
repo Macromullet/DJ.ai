@@ -91,7 +91,7 @@ module storage 'modules/storage.bicep' = {
     location: location
     tags: tags
     disablePublicAccess: enableNetworkIsolation
-    deploymentContainerName: !enableNetworkIsolation ? deploymentContainerName : ''
+    deploymentContainerName: deploymentContainerName
   }
 }
 
@@ -199,7 +199,7 @@ module functionApp 'modules/function-app.bicep' = {
     keyVaultUri: keyVault.outputs.uri
     redisConnectionString: redis.outputs.connectionString
     storageAccountName: storage.outputs.name
-    deploymentContainerName: !enableNetworkIsolation ? deploymentContainerName : ''
+    deploymentContainerName: deploymentContainerName
     allowedRedirectHosts: allowedRedirectHosts
     allowedRedirectSchemes: 'djai'
     enableNetworkIsolation: enableNetworkIsolation

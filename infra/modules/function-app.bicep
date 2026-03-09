@@ -32,13 +32,13 @@ param allowedRedirectSchemes string = 'djai'
 @description('Resource ID of the VNet subnet for Function App integration. Empty disables VNet integration.')
 param functionsSubnetId string = ''
 
-@description('Enable network isolation with VNet, private endpoints, and disabled public access. false = Flex Consumption (FC1).')
+@description('Enable network isolation with VNet integration, private endpoints, and disabled public access.')
 param enableNetworkIsolation bool = false
 
 // Storage endpoints for MI-based access
 var storageBlobEndpoint = 'https://${storageAccountName}.blob.${environment().suffixes.storage}'
 
-// Common app settings shared between both plans
+// Common app settings shared between both configurations
 var commonAppSettings = [
   { name: 'AzureWebJobsStorage__accountName', value: storageAccountName }
   { name: 'APPLICATIONINSIGHTS_CONNECTION_STRING', value: appInsightsConnectionString }
@@ -49,21 +49,12 @@ var commonAppSettings = [
   { name: 'ALLOWED_REDIRECT_SCHEMES', value: allowedRedirectSchemes }
 ]
 
-// Premium-only settings (Flex Consumption handles these via functionAppConfig)
-var premiumOnlySettings = [
-  { name: 'FUNCTIONS_WORKER_RUNTIME', value: 'dotnet-isolated' }
-  { name: 'FUNCTIONS_EXTENSION_VERSION', value: '~4' }
-  { name: 'WEBSITE_RUN_FROM_PACKAGE', value: '1' }
-]
-
 resource plan 'Microsoft.Web/serverfarms@2024-04-01' = {
   name: '${name}-plan'
   location: location
   tags: tags
-  kind: enableNetworkIsolation ? 'elastic' : 'functionapp'
-  sku: enableNetworkIsolation
-    ? { name: 'EP1', tier: 'ElasticPremium' }
-    : { name: 'FC1', tier: 'FlexConsumption' }
+  kind: 'functionapp'
+  sku: { name: 'FC1', tier: 'FlexConsumption' }
   properties: {
     reserved: true // Linux
   }
@@ -80,8 +71,7 @@ resource functionApp 'Microsoft.Web/sites@2024-04-01' = {
     httpsOnly: true
     virtualNetworkSubnetId: enableNetworkIsolation ? functionsSubnetId : null
     // Flex Consumption uses functionAppConfig for deployment, scaling, and runtime.
-    // Premium uses traditional siteConfig with linuxFxVersion and extension version settings.
-    functionAppConfig: !enableNetworkIsolation ? {
+    functionAppConfig: {
       deployment: {
         storage: {
           type: 'blobContainer'
@@ -99,7 +89,7 @@ resource functionApp 'Microsoft.Web/sites@2024-04-01' = {
         name: 'dotnet-isolated'
         version: '8.0'
       }
-    } : null
+    }
     siteConfig: {
       ftpsState: 'Disabled'
       minTlsVersion: '1.2'
@@ -112,9 +102,7 @@ resource functionApp 'Microsoft.Web/sites@2024-04-01' = {
           'https://*.azurestaticapps.net'
         ]
       }
-      appSettings: enableNetworkIsolation
-        ? concat(commonAppSettings, premiumOnlySettings)
-        : commonAppSettings
+      appSettings: commonAppSettings
     }
   }
 }

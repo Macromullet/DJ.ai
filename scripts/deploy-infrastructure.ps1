@@ -45,6 +45,7 @@ param(
     [string]$SubscriptionId,
     [switch]$SkipProvision,
     [switch]$ValidateOnly,
+    [switch]$EnableNetworkIsolation,
     [string]$AllowedRedirectHosts = 'localhost:5173,localhost:5174'
 )
 
@@ -131,6 +132,7 @@ if (-not $SkipProvision) {
         '--template-file', "$root\infra\main.bicep",
         '--parameters', "environmentName=$Environment",
         '--parameters', "allowedRedirectHosts=$AllowedRedirectHosts",
+        '--parameters', "enableNetworkIsolation=$($EnableNetworkIsolation.IsPresent.ToString().ToLower())",
         '--name', "djai-$Environment-$(Get-Date -Format 'yyyyMMdd-HHmmss')",
         '--mode', 'Incremental',
         '--verbose'

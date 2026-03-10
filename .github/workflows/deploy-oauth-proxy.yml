@@ -12,11 +12,11 @@ on:
       environment:
         description: 'Target environment'
         required: true
-        default: 'production'
+        default: 'prod'
         type: choice
         options:
           - staging
-          - production
+          - prod
       enable_network_isolation:
         description: 'Enable VNet + private endpoints'
         required: false
@@ -130,10 +130,10 @@ jobs:
     name: Deploy to Production
     needs: deploy-staging
     runs-on: ubuntu-latest
-    if: github.event.inputs.environment == 'production'
+    if: github.event.inputs.environment == 'prod'
     environment: production  # Requires approval
     env:
-      ENVIRONMENT: production
+      ENVIRONMENT: prod
       RESOURCE_GROUP: rg-djai-prod
       ENABLE_NETWORK_ISOLATION: ${{ github.event.inputs.enable_network_isolation || 'true' }}
     steps:

@@ -10,10 +10,8 @@ param tags object
 @description('Disable public network access (requires private endpoints)')
 param disablePublicAccess bool = false
 
-// NOTE: Standard C1 is needed for private endpoints and AAD auth support.
-// For dev (no private endpoints), Basic C0 is cheaper but Standard is kept
-// for consistency. AAD/Entra ID auth is enabled but the Azure Functions Redis
-// extension doesn't yet support MI-based token auth natively.
+// Standard C1 is required for private endpoints and AAD auth.
+// Basic C0 is used when network isolation is off (cheaper for dev).
 // TODO: Switch to MI-based Redis auth when Functions Redis trigger supports it.
 resource redis 'Microsoft.Cache/redis@2024-03-01' = {
   name: name
@@ -21,9 +19,9 @@ resource redis 'Microsoft.Cache/redis@2024-03-01' = {
   tags: tags
   properties: {
     sku: {
-      name: 'Standard'
+      name: disablePublicAccess ? 'Standard' : 'Basic'
       family: 'C'
-      capacity: 1
+      capacity: disablePublicAccess ? 1 : 0
     }
     enableNonSslPort: false
     minimumTlsVersion: '1.2'

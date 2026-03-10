@@ -127,7 +127,7 @@ Triggers on push to `main` when `oauth-proxy/` or `infra/` files change.
 
 **Pipeline:**
 1. **Build & Test** — `dotnet build`, `dotnet publish`
-2. **Deploy to Staging** — `az deployment group create` + `func azure functionapp publish` (automatic)
+2. **Deploy to Staging** — `az deployment group create` + `Azure/functions-action@v1` (automatic)
 3. **Deploy to Production** — Same, but requires **manual approval** in the GitHub `production` environment
 
 Can also be triggered manually via `workflow_dispatch`.
@@ -319,8 +319,8 @@ For signed Electron releases:
 ## Monitoring
 
 ```bash
-# Stream live logs
-az functionapp log tail --name $(azd env get-values | grep AZURE_FUNCTION_APP_NAME | cut -d= -f2 | tr -d '"') --resource-group rg-$(azd env get-values | grep AZURE_ENV_NAME | cut -d= -f2 | tr -d '"')
+# Stream live logs (replace <app-name> and <environment> with your values)
+az functionapp log tail --name <app-name> --resource-group rg-djai-<environment>
 ```
 
 Or use **Application Insights** in the Azure Portal for metrics, traces, and failures.

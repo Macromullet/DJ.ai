@@ -135,7 +135,7 @@ jobs:
     env:
       ENVIRONMENT: production
       RESOURCE_GROUP: rg-djai-prod
-      ENABLE_NETWORK_ISOLATION: 'true'
+      ENABLE_NETWORK_ISOLATION: ${{ github.event.inputs.enable_network_isolation || 'true' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -145,6 +145,9 @@ jobs:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Validate Bicep
+        run: az bicep build --file infra/main.bicep --stdout > /dev/null
 
       - name: Provision infrastructure
         run: |

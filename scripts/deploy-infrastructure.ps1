@@ -152,15 +152,22 @@ if (-not $SkipProvision) {
 # --- Deploy application ---
 Write-Host "`n[4/4] Deploying application..." -ForegroundColor Yellow
 
-# Get function app name from deployment outputs
-$outputs = az deployment group show `
-    --resource-group $resourceGroup `
-    --name $deploymentName `
-    --query 'properties.outputs' -o json 2>&1 | ConvertFrom-Json
+# Get function app name — from deployment outputs if available, otherwise query directly
+if ($deploymentName) {
+    $outputs = az deployment group show `
+        --resource-group $resourceGroup `
+        --name $deploymentName `
+        --query 'properties.outputs' -o json 2>&1 | ConvertFrom-Json
+    $funcAppName = $outputs.AZURE_FUNCTION_APP_NAME.value
+}
 
-$funcAppName = $outputs.AZURE_FUNCTION_APP_NAME.value
 if (-not $funcAppName) {
-    Write-Error "Could not determine Function App name from deployment outputs. Check that main.bicep outputs 'AZURE_FUNCTION_APP_NAME'."
+    Write-Host "  Resolving function app name from resource group..." -ForegroundColor Gray
+    $funcAppName = az functionapp list --resource-group $resourceGroup --query '[0].name' -o tsv
+}
+
+if (-not $funcAppName) {
+    Write-Error "Could not determine Function App name. Ensure infrastructure has been provisioned to '$resourceGroup'."
 }
 
 Write-Host "  Publishing to $funcAppName..." -ForegroundColor Gray

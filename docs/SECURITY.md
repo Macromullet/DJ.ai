@@ -2,7 +2,7 @@
 
 This document catalogs every security measure in the DJ.ai codebase, organized by defense layer. It is the authoritative reference for understanding how the application protects user data, API credentials, and communication channels.
 
-> **Last reviewed**: March 2026 — MOE review rounds R1–R8 (8 rounds, 3 models per round)
+> **Last reviewed**: March 2026 — 15 MOE review rounds (code) + infrastructure review
 
 ---
 
@@ -16,6 +16,7 @@ This document catalogs every security measure in the DJ.ai codebase, organized b
 - [OAuth Security](#oauth-security)
 - [Rate Limiting](#rate-limiting)
 - [Network Security](#network-security)
+- [Azure Infrastructure Security](#azure-infrastructure-security)
 - [Input Validation](#input-validation)
 - [Secret Management (Azure)](#secret-management-azure)
 - [CI/CD Security](#cicd-security)
@@ -307,8 +308,9 @@ The Electron renderer cannot make cross-origin requests to AI APIs. All requests
 | AI API calls | HTTPS required (validated by `isAllowedAIHost`) |
 | OAuth provider URLs | HTTPS required (validated by `isAllowedOAuthHost`) |
 | Redirect URIs | HTTPS for production; HTTP only for localhost dev |
-| Azure Functions | HTTPS by default (Azure platform) |
-| Redis | TLS via Azure Cache for Redis |
+| Azure Functions | `httpsOnly: true` enforced in Bicep |
+| Redis | TLS 1.2+, non-SSL port disabled |
+| Storage | `supportsHttpsTrafficOnly: true`, TLS 1.2+ minimum |
 
 ### TTS Response Size Limit
 
@@ -321,6 +323,118 @@ TTS audio responses are capped at **10 MB** to prevent out-of-memory attacks:
 
 - `electron-app/electron/validation.cjs` — `TTS_MAX_SIZE`, `isTTSResponseWithinLimit()`
 - `electron-app/electron/main.cjs` — AI/TTS proxy handlers with size checks
+
+---
+
+## Azure Infrastructure Security
+
+**Principle**: Zero-trust architecture — no shared keys, no public endpoints in production, Managed Identity for all inter-resource communication.
+
+### Network Isolation
+
+Network isolation is controlled by the `enableNetworkIsolation` parameter in `infra/main.bicep` (default: `false` for dev, enabled for staging/prod). When enabled:
+
+**VNet Architecture**:
+- Address space: `10.0.0.0/16`
+- `snet-functions` (`10.0.1.0/24`) — delegated to `Microsoft.App/environments` for Flex Consumption
+- `snet-private-endpoints` (`10.0.2.0/24`) — hosts all private endpoints
+
+**Private Endpoints** (5 total, all in `snet-private-endpoints`):
+| Resource | Group ID | DNS Zone |
+|----------|----------|----------|
+| Storage (Blob) | `blob` | `privatelink.blob.core.windows.net` |
+| Storage (Queue) | `queue` | `privatelink.queue.core.windows.net` |
+| Storage (Table) | `table` | `privatelink.table.core.windows.net` |
+| Key Vault | `vault` | `privatelink.vaultcore.azure.net` |
+| Redis Cache | `redisCache` | `privatelink.redis.cache.windows.net` |
+
+**Private DNS Zones**: All 5 zones linked to the VNet with `registrationEnabled: false`. DNS resolution for private endpoints routes through the VNet — external access is blocked.
+
+**Public Network Access**: When network isolation is enabled, all resources set `publicNetworkAccess: 'Disabled'` with default ACL action `Deny` and bypass `AzureServices`.
+
+### Managed Identity & RBAC
+
+The Function App uses a **system-assigned Managed Identity** for all resource access. No shared keys or connection strings are used (except Redis — see note below).
+
+**RBAC Assignments (via dedicated Bicep modules)**:
+
+| Resource | Role | Role ID | Purpose |
+|----------|------|---------|---------|
+| Key Vault | Key Vault Secrets User | `4633458b-...` | Read OAuth client secrets |
+| Storage | Blob Data Owner | `ba92f5b4-...` | Blob triggers + bindings |
+| Storage | Account Contributor | `17d1049b-...` | Runtime account management |
+| Storage | Queue Data Contributor | `974c5e8b-...` | Queue-based coordination |
+| Storage | Table Data Contributor | `0a9a7e1f-...` | Distributed locking |
+
+All role assignments use `principalType: 'ServicePrincipal'` and are scoped to the specific resource (not subscription-level).
+
+### Resource Hardening
+
+**Key Vault** (`infra/modules/key-vault.bicep`):
+| Setting | Value |
+|---------|-------|
+| RBAC Authorization | `true` (no access policies) |
+| Soft Delete | Enabled, 7-day retention |
+| Purge Protection | Enabled |
+| Tenant Isolation | `subscription().tenantId` |
+
+**Storage** (`infra/modules/storage.bicep`):
+| Setting | Value |
+|---------|-------|
+| Shared Key Access | `false` (MI-only auth) |
+| Blob Public Access | `false` |
+| HTTPS Only | `true` |
+| Minimum TLS | 1.2 |
+| Deployment Container | `publicAccess: 'None'` |
+
+**Redis** (`infra/modules/redis.bicep`):
+| Setting | Value |
+|---------|-------|
+| AAD Auth | Enabled (`aad-enabled: 'True'`) |
+| Non-SSL Port | Disabled |
+| Minimum TLS | 1.2 |
+| SKU | Standard C1 (with VNet) / Basic C0 (without) |
+
+> **Known limitation**: The Azure Functions Redis trigger extension does not yet support MI-based token auth. Redis currently uses an access-key connection string over the private endpoint. Traffic is encrypted (TLS 1.2) and never traverses the public internet.
+
+**Function App** (`infra/modules/function-app.bicep`):
+| Setting | Value |
+|---------|-------|
+| HTTPS Only | `true` |
+| FTP State | Disabled |
+| Remote Debugging | Disabled |
+| Detailed Error Logging | Disabled |
+| Minimum TLS | 1.2 |
+| HTTP/2 | Enabled |
+| Max Instance Count | 10 (cost cap) |
+| VNet Route All | Enabled when network isolation on |
+| Deployment Auth | `SystemAssignedIdentity` (MI to blob storage) |
+
+**CORS Policy** (Function App):
+- Localhost ports 5173-5175 always allowed (dev)
+- Production origins derived from `allowedRedirectHosts` parameter, automatically prefixed with `https://`
+- No wildcard origins — explicit allowlist only
+
+### Environment Naming
+
+Three environments enforced by `@allowed(['dev', 'staging', 'prod'])` on the Bicep `environmentName` parameter:
+
+| Environment | Resource Group | Network Isolation | Purpose |
+|-------------|---------------|-------------------|---------|
+| `dev` | `rg-djai-dev` | Optional | Local development |
+| `staging` | `rg-djai-staging` | Enabled | Pre-production validation |
+| `prod` | `rg-djai-prod` | Enabled | Production |
+
+### Files
+
+- `infra/main.bicep` — orchestrator, `@allowed` constraint, conditional network isolation
+- `infra/modules/network-isolation.bicep` — VNet, subnets, private DNS, private endpoints
+- `infra/modules/function-app.bicep` — compute hardening, CORS, VNet integration
+- `infra/modules/storage.bicep` — shared-key disabled, blob public access disabled
+- `infra/modules/key-vault.bicep` — RBAC auth, purge protection
+- `infra/modules/redis.bicep` — AAD auth, TLS enforcement
+- `infra/modules/key-vault-access.bicep` — KV Secrets User role assignment
+- `infra/modules/storage-access.bicep` — 4 storage role assignments
 
 ---
 
@@ -359,9 +473,11 @@ State consumption is atomic (get-and-delete from Redis) — replay attacks are p
 
 | Environment | Secret Source | Authentication |
 |-------------|-------------|----------------|
-| **Production** | Azure Key Vault | Managed Identity |
+| **Staging / Prod** | Azure Key Vault | Managed Identity (system-assigned) |
 | **Development** | dotnet user-secrets | Local file (never committed) |
 | **Testing** | `StubSecretService` | Hardcoded test values |
+
+Key Vault is accessed exclusively via RBAC (`Key Vault Secrets User` role) — no access policies. When network isolation is enabled, access is restricted to private endpoint traffic only (`publicNetworkAccess: 'Disabled'`).
 
 ### Key Vault Secrets
 
@@ -383,17 +499,18 @@ The `/health` endpoint validates:
 - Key Vault connectivity (can fetch Spotify client ID)
 - Apple Music PEM key validity (basic format check)
 - Returns `healthy`, `not_configured`, or `unhealthy` per check
+- Returns `503` with `{"status":"degraded","keyVault":"unavailable"}` when secrets are not yet populated
 
 ### Setup Scripts
 
-- `setup.ps1 --local` — interactive wizard for `dotnet user-secrets`
-- `setup.ps1 --cloud` — interactive wizard for `az keyvault secret set`
+- `setup.ps1 --local` — interactive wizard for `dotnet user-secrets` (injected by Aspire)
+- `scripts/setup-cloud.ps1` — interactive wizard for `az keyvault secret set` (no `azd` dependency)
 
 ### Files
 
-- `oauth-proxy/Services/ISecretService.cs` — interface + 3 implementations
+- `oauth-proxy/Services/ISecretService.cs` — interface + implementations
 - `oauth-proxy/Functions/HealthCheckFunction.cs` — secret health validation
-- `scripts/setup-local.ps1`, `scripts/setup-cloud.ps1` — setup wizards
+- `scripts/setup-cloud.ps1` — Key Vault secret setup wizard
 
 ---
 
@@ -401,39 +518,55 @@ The `/health` endpoint validates:
 
 ### Continuous Integration (`ci.yml`)
 
+- **Permissions**: `contents: read` only — no write access, no cloud access
+- **Concurrency**: Cancels in-progress builds on new pushes (prevents duplicate runs)
 - Runs on every push: backend build + test, frontend typecheck + build, Electron package dry run
 - No secrets consumed — pure build/test
 - Pinned action versions
 
 ### OAuth Proxy Deployment (`deploy-oauth-proxy.yml`)
 
-- **Trigger**: Manual (`workflow_dispatch`) only — no auto-deploy
-- **Authentication**: OIDC federation (no long-lived credentials in GitHub)
-- **Permissions**: `id-token: write` (OIDC), `contents: read`
-- **Staging**: Deploys without approval
-- **Production**: Requires GitHub environment approval gate
-- **Token lifetime**: ~1 hour (auto-rotated per run)
+- **Authentication**: OIDC federation — no long-lived credentials in GitHub
+- **Permissions**: `id-token: write` (OIDC) + `contents: read` (least privilege)
+- **Trigger**: Push to `main` (path-filtered to `oauth-proxy/` and `infra/`) + manual `workflow_dispatch`
+- **Staging**: Deploys without approval via GitHub `staging` environment
+- **Production**: Requires GitHub `production` environment approval gate
+- **Token lifetime**: ~1 hour (auto-rotated per OIDC run)
+- **Bicep validation**: Runs `az bicep build` on all templates before provisioning
+- **Incremental mode**: ARM deployments use `--mode Incremental` (no accidental resource deletion)
+- **Deployment method**: `Azure/functions-action@v1` (One Deploy protocol for Flex Consumption)
 
 ### Electron Release (`release-electron.yml`)
 
-- **Trigger**: Version tags only
+- **Trigger**: Version tags only (no branch pushes)
+- **Permissions**: `contents: write` (only for creating GitHub Releases)
 - **Code signing**: Platform certificates via GitHub Secrets
   - Windows: `CSC_LINK` + `CSC_KEY_PASSWORD`
   - macOS: `APPLE_ID` + `APPLE_APP_SPECIFIC_PASSWORD` + `APPLE_TEAM_ID`
 - **Output**: Draft GitHub Release with signed binaries
 
-### OIDC Benefits
+### OIDC Federation
 
-- ✅ No long-lived credentials stored in GitHub
-- ✅ Tokens scoped to specific workflow runs
-- ✅ Automatic rotation (no manual key management)
-- ✅ No risk of leaked static credentials
+All Azure authentication uses OpenID Connect federation — no static credentials stored anywhere:
+
+| Benefit | Detail |
+|---------|--------|
+| No stored secrets | Tokens generated per-run via OIDC exchange |
+| Scoped tokens | Each token scoped to the specific workflow run |
+| Auto-rotation | No manual key management or expiration tracking |
+| Environment isolation | Separate federated credentials for staging vs production |
+| Least-privilege | Service principal has Contributor + User Access Administrator per RG only |
+
+**Required GitHub Secrets** (3 total — all identity, no passwords):
+- `AZURE_CLIENT_ID` — App registration client ID
+- `AZURE_TENANT_ID` — Azure AD tenant ID
+- `AZURE_SUBSCRIPTION_ID` — Target subscription ID
 
 ### Files
 
-- `.github/workflows/ci.yml`
-- `.github/workflows/deploy-oauth-proxy.yml`
-- `.github/workflows/release-electron.yml`
+- `.github/workflows/ci.yml` — build/test only, no cloud access
+- `.github/workflows/deploy-oauth-proxy.yml` — OIDC, environment gates, Bicep validation
+- `.github/workflows/release-electron.yml` — code signing, draft releases
 
 ---
 
@@ -441,20 +574,28 @@ The `/health` endpoint validates:
 
 | Gap | Severity | Status | Notes |
 |-----|----------|--------|-------|
+| Redis MI auth | Medium | Blocked | Azure Functions Redis trigger doesn't support MI tokens yet; using access-key over private endpoint |
 | PKCE not implemented | Medium | Planned | Would add code_verifier/code_challenge to OAuth flow |
 | No `frame-src` in CSP | Low | Planned | Should add `frame-src 'none'` explicitly |
 | Electron auto-update | Medium | Planned | Need staged rollouts with signature verification |
 | Secret rotation policy | Low | Planned | Document Key Vault rotation schedule |
+| Network isolation default | Low | By design | Disabled for `dev` (cost); enabled for staging/prod deployments |
 
 ---
 
 ## Review History
 
-This codebase has been reviewed through **8 rounds of Mixture-of-Experts (MOE) code review**, each using 3 independent AI models reviewing security, frontend, and backend concerns in parallel. Models are rotated between rounds to minimize blind spots.
+This codebase has been reviewed through **15 rounds of Mixture-of-Experts (MOE) code review**, each using 3 independent AI models reviewing security, frontend, backend, and infrastructure concerns in parallel. Models are rotated between rounds to minimize blind spots.
 
-| Round | Models | Findings | Status |
-|-------|--------|----------|--------|
-| R1–R5 | Gemini, Opus, Codex (various) | 20+ fixes | ✅ All resolved |
-| R6 | Gemini 3 Pro, Opus 4.6, Codex 5.3 | 12 fixes | ✅ All resolved |
-| R7 | Gemini 3 Pro, GPT-5.2 Codex, Opus 4.5 | 3 security findings | ✅ All resolved |
-| R8 | Opus 4.5, Gemini 3 Pro, GPT-5.2 Codex | 4 findings | ✅ All resolved |
+| Round | Models | Focus | Findings | Status |
+|-------|--------|-------|----------|--------|
+| R1–R5 | Gemini, Opus, Codex (rotated) | Security, frontend, backend | 35 fixes | ✅ All resolved |
+| R6 | Opus 4.6, Gemini 3 Pro, Codex 5.3 | Frontend, backend, security | 13 fixes | ✅ All resolved |
+| R7 | Gemini 3 Pro, GPT-5.2 Codex, Opus 4.5 | Security hardening | 3 fixes | ✅ All resolved |
+| R8 | Opus 4.5, Gemini 3 Pro, GPT-5.2 Codex | State management | 4 fixes | ✅ All resolved |
+| R9 | GPT-5.2 Codex, Opus 4.5, Gemini 3 Pro | Concurrency, atomicity | 3 fixes | ✅ All resolved |
+| R10 | Sonnet 4, Gemini 3 Pro, Opus 4.5 | Security, frontend, backend | 4 fixes | ✅ All resolved |
+| R11 | GPT-5.1 Codex, Opus 4.6, Gemini 3 Pro | Full convergence check | 1 fix | ✅ Converged |
+| Infra | Gemini Pro, Opus 4.6, Codex 5.3 | Cost, security, dead code | 11 fixes | ✅ All resolved |
+
+See [MOE Playbook](MOE_PLAYBOOK.md) for the methodology, prompt templates, and lessons learned.

@@ -15,6 +15,7 @@ targetScope = 'resourceGroup'
 param location string = resourceGroup().location
 
 @description('Environment name (dev, staging, prod)')
+@allowed(['dev', 'staging', 'prod'])
 param environmentName string
 
 @description('Enable network isolation with VNet, private endpoints, and disabled public access. Default false for dev.')

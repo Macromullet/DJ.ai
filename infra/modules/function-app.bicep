@@ -82,7 +82,7 @@ resource functionApp 'Microsoft.Web/sites@2024-04-01' = {
         }
       }
       scaleAndConcurrency: {
-        maximumInstanceCount: 100
+        maximumInstanceCount: 10
         instanceMemoryMB: 2048
       }
       runtime: {
@@ -98,9 +98,17 @@ resource functionApp 'Microsoft.Web/sites@2024-04-01' = {
       detailedErrorLoggingEnabled: false
       vnetRouteAllEnabled: enableNetworkIsolation
       cors: {
-        allowedOrigins: [
-          'https://*.azurestaticapps.net'
-        ]
+        allowedOrigins: union(
+          [
+            'http://localhost:5173'
+            'http://localhost:5174'
+            'http://localhost:5175'
+          ],
+          empty(allowedRedirectHosts) ? [] : map(
+            filter(split(allowedRedirectHosts, ','), host => !startsWith(host, 'localhost')),
+            host => 'https://${host}'
+          )
+        )
       }
       appSettings: commonAppSettings
     }

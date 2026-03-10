@@ -2,6 +2,11 @@
 # DJ.ai Cloud Setup Tool
 # Configures cloud secrets in Azure Key Vault
 
+param(
+    [string]$ResourceGroup,
+    [string]$KeyVaultName
+)
+
 $ErrorActionPreference = 'Stop'
 
 Write-Host "checking prerequisites..." -ForegroundColor Cyan
@@ -19,35 +24,21 @@ if (-not $account) {
     exit 1
 }
 
-# Check azd
-if (-not (Get-Command azd -ErrorAction SilentlyContinue)) {
-    Write-Error "Azure Developer CLI (azd) is not installed."
-    exit 1
-}
-
 Write-Host "✓ Prerequisites met (logged in as $account)" -ForegroundColor Green
 Write-Host ""
 
 # Auto-detect Key Vault
 Write-Host "Detecting Key Vault..." -ForegroundColor Cyan
-$kvName = $null
+$kvName = $KeyVaultName
 
-# Try azd env first
-if (Test-Path ".azure") {
-    $envValues = azd env get-values 2>$null
-    if ($envValues) {
-        foreach ($line in $envValues) {
-            if ($line -match 'AZURE_KEY_VAULT_NAME="?([^"]+)"?') {
-                $kvName = $matches[1]
-                break
-            }
-        }
-    }
+# Try resource group parameter
+if (-not $kvName -and $ResourceGroup) {
+    $kvName = az keyvault list --resource-group $ResourceGroup --query "[0].name" -o tsv 2>$null
 }
 
-# Try az keyvault list as fallback
+# Try all accessible vaults as fallback
 if (-not $kvName) {
-    $kvName = az keyvault list --query "[0].name" -o tsv 2>$null
+    $kvName = az keyvault list --query "[?starts_with(name, 'kv-')].name" -o tsv 2>$null | Select-Object -First 1
 }
 
 if ($kvName) {
@@ -144,11 +135,10 @@ foreach ($secret in $secrets) {
 
 # Configure allowed hosts
 Write-Host "Configuring ALLOWED_REDIRECT_HOSTS..." -ForegroundColor Cyan
-$newHosts = Read-Host "Enter allowed redirect hosts (comma-separated, e.g., https://dj-ai.azurewebsites.net)"
-if (-not [string]::IsNullOrWhiteSpace($newHosts)) {
-    azd env set ALLOWED_REDIRECT_HOSTS "$newHosts"
-    Write-Host "  ✓ Updated ALLOWED_REDIRECT_HOSTS" -ForegroundColor Green
-}
+Write-Host "  This is set as an app setting on the Function App via Bicep parameters." -ForegroundColor DarkGray
+Write-Host "  Set it as a GitHub Actions variable (ALLOWED_REDIRECT_HOSTS) or pass it" -ForegroundColor DarkGray
+Write-Host "  to deploy-infrastructure.ps1 via -AllowedRedirectHosts." -ForegroundColor DarkGray
 
 Write-Host ""
-Write-Host "Setup complete! Run 'azd up' to deploy." -ForegroundColor Green
+Write-Host "Setup complete! Deploy with:" -ForegroundColor Green
+Write-Host "  .\scripts\deploy-infrastructure.ps1 -Environment dev" -ForegroundColor Cyan

@@ -150,7 +150,7 @@ Start Docker Desktop — Redis runs as a container. Without Docker, use the manu
 
 | Feature | Development | Production |
 |---------|-------------|------------|
-| Orchestration | .NET Aspire | Azure (Bicep + azd) |
+| Orchestration | .NET Aspire | Azure (Bicep + az CLI) |
 | OAuth Proxy | localhost:7071 | Azure Functions |
 | State Store | Redis (Docker) | Azure Cache for Redis |
 | Secrets | dotnet user-secrets (via setup.ps1) | Azure Key Vault |

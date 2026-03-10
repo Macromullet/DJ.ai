@@ -74,9 +74,7 @@ All Azure resources defined as code. Bicep is the single source of truth — no 
 infra/
 ├── main.bicep                  # Root template (hardened deployment)
 └── modules/
-    ├── vnet.bicep              # VNet with two subnets
-    ├── private-dns-zones.bicep # DNS zones for private endpoints
-    ├── private-endpoint.bicep  # Reusable PE module
+    ├── network-isolation.bicep # VNet, subnets, private DNS zones, private endpoints
     ├── function-app.bicep      # Azure Functions (OAuth Proxy)
     ├── key-vault.bicep         # Secret storage (RBAC, purge protection)
     ├── key-vault-access.bicep  # MI role assignment

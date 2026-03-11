@@ -14,6 +14,17 @@ interface AiProxyRequestOptions {
   body?: unknown;
 }
 
+interface CopilotChatOptions {
+  systemPrompt: string;
+  userPrompt: string;
+}
+
+interface CopilotChatResponse {
+  ok: boolean;
+  text?: string;
+  error?: string;
+}
+
 interface ElectronBridge {
   oauthDeepLink: {
     onCallback: (callback: (url: string) => void) => void;
@@ -23,6 +34,9 @@ interface ElectronBridge {
   aiProxy: {
     request: (options: AiProxyRequestOptions) => Promise<AiProxyResponse>;
     ttsRequest: (options: AiProxyRequestOptions) => Promise<AiProxyResponse>;
+  };
+  copilot: {
+    chat: (options: CopilotChatOptions) => Promise<CopilotChatResponse>;
   };
   safeStorage: {
     isAvailable: () => Promise<boolean>;

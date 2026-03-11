@@ -21,6 +21,11 @@ contextBridge.exposeInMainWorld('electron', {
     ttsRequest: (options) => ipcRenderer.invoke('ai-tts-request', options),
   },
 
+  // Copilot SDK — generates text via user's GitHub Copilot subscription (no API key)
+  copilot: {
+    chat: (options) => ipcRenderer.invoke('ai-copilot-chat', options),
+  },
+
   // API key management — keys are stored and managed by the main process only.
   // The renderer never receives plaintext keys.
   apiKeys: {

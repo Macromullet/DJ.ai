@@ -14,7 +14,7 @@ import type { ServiceContainer } from './container';
 export interface ProductionModeOptions {
   provider: 'spotify' | 'apple';
   ttsProvider?: 'web-speech' | 'openai' | 'gemini' | 'elevenlabs';
-  aiProvider?: 'openai' | 'anthropic';
+  aiProvider?: 'copilot' | 'openai' | 'anthropic';
   openaiApiKey?: string;
   anthropicApiKey?: string;
   geminiApiKey?: string;

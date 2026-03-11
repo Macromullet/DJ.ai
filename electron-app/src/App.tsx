@@ -42,7 +42,7 @@ function MainApp() {
         spotify: { isConnected: false },
         apple: { isConnected: isTestMode() }
       },
-      aiProvider: 'openai',
+      aiProvider: 'copilot',
       openaiApiKey: '',
       anthropicApiKey: '',
       elevenLabsApiKey: '',

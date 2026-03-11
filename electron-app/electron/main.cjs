@@ -9,6 +9,30 @@ let oauthWindow = null;
 let tray = null;
 let currentTrackInfo = { title: 'DJ.ai', artist: '' };
 
+// ============ COPILOT SDK (lazy-loaded ESM) ============
+let copilotClient = null;
+let copilotInitPromise = null;
+
+async function getCopilotClient() {
+  if (copilotClient) return copilotClient;
+  if (copilotInitPromise) return copilotInitPromise;
+
+  copilotInitPromise = (async () => {
+    try {
+      const { CopilotClient } = await import('@github/copilot-sdk');
+      const client = new CopilotClient({ autoStart: true });
+      await client.start();
+      copilotClient = client;
+      return client;
+    } catch (err) {
+      copilotInitPromise = null;
+      throw err;
+    }
+  })();
+
+  return copilotInitPromise;
+}
+
 // ============ MAIN-PROCESS API KEY STORE ============
 // Keys are stored encrypted on disk, decrypted only in main process memory.
 // The renderer NEVER receives plaintext keys.
@@ -378,6 +402,43 @@ ipcMain.handle('ai-tts-request', async (event, { url, method, headers, body }) =
   }
 });
 
+// ============ COPILOT CHAT IPC ============
+// Uses the GitHub Copilot SDK to generate text via the user's Copilot subscription.
+// No API key needed — auth is handled by the Copilot CLI.
+
+ipcMain.handle('ai-copilot-chat', async (_event, { systemPrompt, userPrompt }) => {
+  try {
+    const client = await getCopilotClient();
+    const session = await client.createSession({
+      model: 'gpt-4.1',
+      systemMessage: { mode: 'replace', content: systemPrompt },
+    });
+
+    const response = await session.sendAndWait(
+      { prompt: userPrompt },
+      30000
+    );
+
+    const text = response?.data?.content || '';
+    await session.disconnect();
+    return { ok: true, text };
+  } catch (err) {
+    const message = err.message || 'Unknown Copilot error';
+    const isCLIMissing = message.includes('ENOENT') || message.includes('not found') || message.includes('spawn');
+    const isAuthError = message.includes('auth') || message.includes('token') || message.includes('401');
+
+    let userMessage = message;
+    if (isCLIMissing) {
+      userMessage = 'GitHub Copilot CLI not found. Install with: npm install -g @github/copilot && copilot auth login';
+    } else if (isAuthError) {
+      userMessage = 'GitHub Copilot authentication expired. Run: copilot auth login';
+    }
+
+    console.error('Copilot chat error:', message);
+    return { ok: false, error: userMessage };
+  }
+});
+
 // ============ API KEY MANAGEMENT IPC ============
 // The renderer sends plaintext keys during save ONLY — they are encrypted immediately
 // and stored on disk. The renderer never receives plaintext keys back.
@@ -467,10 +528,16 @@ app.whenReady().then(() => {
   registerMediaKeys();
 });
 
-app.on('before-quit', () => {
+app.on('before-quit', async () => {
   app.isQuitting = true;
   globalShortcut.unregisterAll();
   if (tray) { tray.destroy(); tray = null; }
+  // Gracefully stop Copilot SDK client if it was started
+  if (copilotClient) {
+    try { await copilotClient.stop(); } catch { /* ignore cleanup errors */ }
+    copilotClient = null;
+    copilotInitPromise = null;
+  }
 });
 
 app.on('window-all-closed', () => {

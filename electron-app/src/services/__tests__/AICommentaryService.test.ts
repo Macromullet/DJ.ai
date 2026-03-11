@@ -67,14 +67,19 @@ describe('AICommentaryService', () => {
   // ----- generateCommentary: copilot ---------------------------------------
   describe('generateCommentary with copilot provider', () => {
     it('uses copilot.chat when available', async () => {
-      const chatFn = vi.fn().mockResolvedValue('Great song!');
+      const chatFn = vi.fn().mockResolvedValue({ ok: true, text: 'Great song!' });
       (window.electron as any).copilot = { chat: chatFn };
 
       const svc = new AICommentaryService({ provider: 'copilot' });
       const result = await svc.generateCommentary('Song', 'Artist');
 
-      expect(chatFn).toHaveBeenCalledWith(expect.stringContaining('Song'));
-      expect(chatFn).toHaveBeenCalledWith(expect.stringContaining('Artist'));
+      expect(chatFn).toHaveBeenCalledWith(expect.objectContaining({
+        systemPrompt: expect.stringContaining('veteran late-night radio DJ'),
+        userPrompt: expect.stringContaining('Song'),
+      }));
+      expect(chatFn).toHaveBeenCalledWith(expect.objectContaining({
+        userPrompt: expect.stringContaining('Artist'),
+      }));
       expect(result.text).toBe('Great song!');
       expect(result.trackId).toBe('artist-song');
     });
@@ -89,17 +94,49 @@ describe('AICommentaryService', () => {
       expect(result.text).toContain('Queen');
     });
 
-    it('falls back to template when copilot.chat returns empty', async () => {
-      const chatFn = vi.fn().mockResolvedValue('');
+    it('falls back to template when copilot returns error', async () => {
+      const chatFn = vi.fn().mockResolvedValue({ ok: false, error: 'Auth expired' });
       (window.electron as any).copilot = { chat: chatFn };
 
       const svc = new AICommentaryService({ provider: 'copilot' });
       const result = await svc.generateCommentary('Song', 'Artist');
 
-      // Empty string is falsy, so getFallbackCommentary('', '') is called
-      // with empty title/artist, but the result is still a string
+      // Error response triggers throw → caught → fallback template
+      expect(result.text).toBeTruthy();
+      expect(result.text).toContain('Song');
+    });
+
+    it('falls back to template when copilot returns empty text', async () => {
+      const chatFn = vi.fn().mockResolvedValue({ ok: true, text: '' });
+      (window.electron as any).copilot = { chat: chatFn };
+
+      const svc = new AICommentaryService({ provider: 'copilot' });
+      const result = await svc.generateCommentary('Song', 'Artist');
+
+      // Empty text is falsy → throws → caught → fallback
       expect(typeof result.text).toBe('string');
       expect(result.text.length).toBeGreaterThan(0);
+    });
+
+    it('passes DJ system prompt and track context', async () => {
+      const chatFn = vi.fn().mockResolvedValue({ ok: true, text: 'Nice transition!' });
+      (window.electron as any).copilot = { chat: chatFn };
+
+      const svc = new AICommentaryService({ provider: 'copilot' });
+      await svc.generateCommentary('Hey Jude', 'The Beatles', 'Past Masters', {
+        title: 'Yesterday',
+        artist: 'The Beatles',
+      });
+
+      const callArgs = chatFn.mock.calls[0][0];
+      // System prompt should contain DJ persona rules
+      expect(callArgs.systemPrompt).toContain('NEVER open with biographical facts');
+      expect(callArgs.systemPrompt).toContain('2-3 sentences MAX');
+      // User prompt should contain track info and transition context
+      expect(callArgs.userPrompt).toContain('Hey Jude');
+      expect(callArgs.userPrompt).toContain('The Beatles');
+      expect(callArgs.userPrompt).toContain('Past Masters');
+      expect(callArgs.userPrompt).toContain('Yesterday');
     });
   });
 

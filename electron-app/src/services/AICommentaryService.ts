@@ -145,10 +145,16 @@ export class AICommentaryService implements IAICommentaryService {
   private async generateWithCopilot(prompt: string): Promise<string> {
     const electron = (window as any).electron;
     if (electron?.copilot) {
-      const response = await electron.copilot.chat(prompt);
-      return response || this.getFallbackCommentary('', '');
+      const response = await electron.copilot.chat({
+        systemPrompt: AICommentaryService.DJ_SYSTEM_PROMPT,
+        userPrompt: prompt,
+      });
+      if (response.ok && response.text) {
+        return response.text;
+      }
+      throw new Error(response.error || 'Copilot returned empty response');
     }
-    throw new Error('Copilot not available');
+    throw new Error('Copilot not available — install GitHub Copilot CLI and authenticate');
   }
 
   private async generateWithOpenAI(prompt: string): Promise<string> {

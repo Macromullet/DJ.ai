@@ -21,7 +21,7 @@ export interface SettingsConfig {
   };
   
   // AI & TTS settings
-  aiProvider: 'openai' | 'anthropic';
+  aiProvider: 'copilot' | 'openai' | 'anthropic';
   openaiApiKey: string;
   anthropicApiKey: string;
   elevenLabsApiKey: string;
@@ -189,6 +189,20 @@ export function Settings({ config, onSave, onClose, onConnectProvider, onDisconn
           <section className="settings-section">
             <h3>🤖 AI Commentary Provider</h3>
             
+            <div className="setting-item">
+              <label>
+                <input
+                  type="radio"
+                  name="aiProvider"
+                  value="copilot"
+                  checked={localConfig.aiProvider === 'copilot'}
+                  onChange={(_e) => setLocalConfig({...localConfig, aiProvider: 'copilot'})}
+                />
+                GitHub Copilot (Recommended)
+              </label>
+              <p className="help-text">Uses your GitHub Copilot subscription — no API key needed. Requires <a href="https://docs.github.com/en/copilot/how-tos/copilot-sdk/sdk-getting-started" target="_blank" rel="noopener noreferrer">Copilot CLI</a> installed and authenticated.</p>
+            </div>
+
             <div className="setting-item">
               <label>
                 <input

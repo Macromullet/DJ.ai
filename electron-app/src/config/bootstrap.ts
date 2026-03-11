@@ -33,9 +33,9 @@ export async function bootstrapApp() {
       let settings: Record<string, any> = {};
       try { settings = savedSettings ? JSON.parse(savedSettings) : {}; } catch { /* use defaults */ }
 
-      // Smart AI provider default: use whichever key the user has
+      // Smart AI provider default: prefer copilot (free with subscription), else whichever key the user has
       const aiProvider = settings.aiProvider
-        || (keys.anthropicApiKey ? 'anthropic' : keys.openaiApiKey ? 'openai' : 'anthropic');
+        || (keys.anthropicApiKey ? 'anthropic' : keys.openaiApiKey ? 'openai' : 'copilot');
 
       initializeProductionMode({
         provider: settings.currentProvider || 'apple',

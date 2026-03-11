@@ -183,7 +183,7 @@ describe('bootstrapApp', () => {
       );
     });
 
-    it('defaults to anthropic when user has neither key', async () => {
+    it('defaults to copilot when user has neither key', async () => {
       vi.mocked(getApiKeys).mockResolvedValueOnce({
         openaiApiKey: '',
         anthropicApiKey: '',
@@ -194,7 +194,7 @@ describe('bootstrapApp', () => {
       await bootstrapApp();
 
       expect(initializeProductionMode).toHaveBeenCalledWith(
-        expect.objectContaining({ aiProvider: 'anthropic' }),
+        expect.objectContaining({ aiProvider: 'copilot' }),
       );
     });
   });

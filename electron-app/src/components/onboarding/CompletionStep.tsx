@@ -13,6 +13,7 @@ const PROVIDER_LABELS: Record<string, string> = {
 };
 
 const AI_LABELS: Record<string, string> = {
+  copilot: 'GitHub Copilot',
   openai: 'OpenAI',
   anthropic: 'Anthropic',
 };
@@ -23,7 +24,7 @@ export const CompletionStep: React.FC<CompletionStepProps> = ({
   savedApiKeys,
 }) => {
   const musicProviders = ['spotify', 'apple'];
-  const aiProviders = ['openai', 'anthropic'];
+  const aiProviders = ['copilot', 'openai', 'anthropic'];
 
   const hasAnySetup = connectedProviders.size > 0 || savedApiKeys.size > 0;
 
@@ -56,15 +57,16 @@ export const CompletionStep: React.FC<CompletionStepProps> = ({
 
         <div className="completion-section-label mt-2">AI Commentary</div>
         {aiProviders.map(id => {
-          const saved = savedApiKeys.has(id);
+          const isCopilot = id === 'copilot';
+          const saved = isCopilot || savedApiKeys.has(id);
           return (
             <div key={id} className="completion-item">
               <span className="completion-status-icon">{saved ? '✅' : '⏭️'}</span>
               <span className={`completion-item-label ${saved ? 'connected' : ''}`}>
-                {AI_LABELS[id]} API key
+                {AI_LABELS[id]}{isCopilot ? ' (subscription)' : ' API key'}
               </span>
               <span className={`completion-item-status ${saved ? 'connected' : ''}`}>
-                {saved ? 'Saved' : 'Skipped'}
+                {isCopilot ? 'Available' : (savedApiKeys.has(id) ? 'Saved' : 'Skipped')}
               </span>
             </div>
           );
